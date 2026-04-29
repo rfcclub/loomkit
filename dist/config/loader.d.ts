@@ -16,7 +16,7 @@ declare const LoomKitConfigSchema: z.ZodObject<{
         command: z.ZodOptional<z.ZodString>;
     }, z.core.$strip>>;
     context: z.ZodDefault<z.ZodString>;
-    rules: z.ZodDefault<z.ZodRecord<z.core.$ZodRecordKey, z.core.SomeType>>;
+    rules: z.ZodDefault<z.ZodRecord<z.ZodString, z.ZodArray<z.ZodString>>>;
 }, z.core.$strip>;
 export type LoomKitConfig = z.infer<typeof LoomKitConfigSchema>;
 export declare function loadConfig(yamlContent: string | null): LoomKitConfig;

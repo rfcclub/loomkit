@@ -9,7 +9,7 @@ const LoomKitConfigSchema = z.object({
     schema: z.enum(['spec-driven']).default('spec-driven'),
     tdd: TddConfigSchema.optional(),
     context: z.string().default(''),
-    rules: z.record(z.array(z.string())).default({}),
+    rules: z.record(z.string(), z.array(z.string())).default({}),
 });
 function substituteEnvVars(value) {
     return value.replace(/\$\{(\w+)\}/g, (_, varName) => {
