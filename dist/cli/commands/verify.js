@@ -3,6 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { getChangeDir, changeExists, listChanges } from '../utils.js';
 import { parseSpec } from '../../spec/parser.js';
 import { calculateCoverage } from '../../tdd/traceability.js';
+import { parse as parseYaml } from 'yaml';
 export function cmdVerify(name) {
     const changes = name ? [name] : listChanges();
     if (changes.length === 0) {
@@ -41,15 +42,18 @@ function verifyChange(name) {
     let passingTests = [];
     if (existsSync(traceFile)) {
         const traceContent = readFileSync(traceFile, 'utf-8');
-        const lines = traceContent.split('\n');
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
-            if (line.includes('status: passing')) {
-                const scenarioLine = lines[i - 1];
-                const scMatch = scenarioLine.match(/scenario:\s+(\S+)/);
-                if (scMatch)
-                    passingTests.push(scMatch[1]);
+        try {
+            const data = parseYaml(traceContent);
+            if (data?.scenarios && Array.isArray(data.scenarios)) {
+                for (const entry of data.scenarios) {
+                    if (entry.status === 'passing' && entry.scenario) {
+                        passingTests.push(entry.scenario);
+                    }
+                }
             }
+        }
+        catch (e) {
+            console.log(`  ⚠  Could not parse traceability file as YAML: ${e}`);
         }
     }
     const result = calculateCoverage(mandatoryScenarios, passingTests, 100);
