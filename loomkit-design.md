@@ -1,13 +1,19 @@
-# LoomKit — Design Framework with TDD Superpowers
+# LoomKit — Spec-Driven Design Framework with TDD Superpowers
 
 ## What Is LoomKit
 
-LoomKit is a spec-driven design framework that combines OpenSpec's structured workflow with Superpowers' TDD enforcement.
+LoomKit is a **collaboration framework for AI agents and humans**. It combines OpenSpec's structured workflow with Superpowers' TDD enforcement.
+
+**Two layers, one workflow:**
+1. **Skill instructions** (Superpowers-style) — agents know *what to do* at each phase
+2. **Output format** (OpenSpec-style) — humans can *read and review* specs, plans, coverage
+
+Both layers are markdown. Both are git-trackable. Humans approve via git merge; agents proceed after approval.
 
 - **From OpenSpec**: propose → spec → design → tasks → apply → archive workflow, config.yaml, living specs vs changes, delta specs, spec merging
 - **From Superpowers**: brainstorm → spec → plan flow, bite-sized tasks with exact code, TDD Iron Law (RED/GREEN/REFACTOR), no placeholders, verification gate
 
-**LoomKit is a fresh implementation**, not a wrapper. It takes methodology from both, implements cleanly in TypeScript.
+**LoomKit is a fresh implementation**, not a wrapper. It takes methodology from both.
 
 ## LoomKit Workflow
 
@@ -20,6 +26,15 @@ LoomKit is a spec-driven design framework that combines OpenSpec's structured wo
 /lk:verify      → Scenario coverage check + test suite (LoomKit original)
 /lk:archive     → Gate: verify must pass → merge specs (from OpenSpec)
 ```
+
+## Users
+
+| User | What They Do | How They Interact |
+|------|-------------|-------------------|
+| **Agent** | Follow workflow, generate specs, write TDD plans, implement code | SKILL.md instructions per phase |
+| **Human** | Read specs, review plans, approve/reject, catch what agents miss | Read markdown, git review/merge |
+
+Output must be **human-readable by design**. Spec markdown, plan markdown, coverage reports. Not JSON schemas or API calls. Human looks at `changes/<feature>/` and immediately understands: what's proposed, what's required, how it'll be built.
 
 ## Key Differences From Source Projects
 
@@ -128,13 +143,49 @@ rules:
 
 ## Implementation Approach
 
-Fresh TypeScript implementation. Read source repos for methodology reference only.
+**Two-layer architecture:**
 
-- **Don't** import `@fission-ai/openspec` or copy Superpowers code
-- **Do** read their schemas, templates, and skills to understand the patterns
-- **Do** reimplement the core logic cleanly, tailored to LoomKit's TDD-first approach
+### Layer 1: Skill Instructions (Superpowers-style)
+SKILL.md files for each phase — agent reads and follows.
+
+Located in `skills/`:
+```
+skills/
+├── brainstorm/SKILL.md    — Socratic dialogue, explore context
+├── spec/SKILL.md          — Write WHEN/THEN requirements
+├── design/SKILL.md        — Technical design with test strategy
+├── plan/SKILL.md          — Bite-sized TDD tasks with exact code
+├── tdd/SKILL.md           — RED/GREEN/REFACTOR enforcement
+├── verify/SKILL.md        — Scenario coverage check
+└── archive/SKILL.md       — Gate: verify pass → merge specs
+```
+
+### Layer 2: Validation Tool (TypeScript)
+Companion tool for format checking, enforcement, and coverage calculation.
+
+Located in `src/`:
+```
+src/
+├── spec/       — parser, validator, assertion, delta, merge
+├── plan/       — no-placeholder, TDD order, file path validator
+├── config/     — Zod schema, defaults, env var substitution
+├── tdd/        — traceability mapping, coverage calculator
+├── verify/     — coverage gate
+├── archive/    — archive gate, force archive
+├── brainstorm/ — parser, validator
+└── schema/     — YAML workflow schema loader
+```
+
+### How They Work Together
+- Agent reads SKILL.md → follows workflow → generates markdown artifacts
+- Validation tool checks artifacts: format correct? TDD order? Coverage met?
+- Human reads markdown → reviews → approves/rejects via git
+
+**Don't** import `@fission-ai/openspec` or copy Superpowers code
+**Do** read their source to understand methodology, reimplement cleanly
 
 ---
 
 *Design: Aria — 2026-04-29*
 *Sources: ~/repo/OpenSpec (MIT), ~/repo/superpowers (MIT)*
+*Updated: 2026-04-29 — clarified dual-user model (agent + human)*
