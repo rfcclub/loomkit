@@ -1,0 +1,29 @@
+schema: spec-driven
+
+tdd:
+  framework: vitest
+  enforce: true
+  coverage_threshold: 100
+
+context: |
+  Project: LoomKit — spec-driven design framework with TDD enforcement
+  Stack: TypeScript, Node.js 20+
+  Design philosophy: requirements-as-code, LLM-readable, test-translatable
+
+rules:
+  proposal:
+    - Include motivation and non-goals
+    - Identify affected components
+  specs:
+    - Every requirement needs ≥1 scenario
+    - Scenarios use WHEN/THEN format
+    - WHEN/THEN must be directly translatable to a test case
+    - Use SHALL/MUST/SHOULD (RFC 2119)
+  design:
+    - Include test strategy section
+    - Map scenarios to test files/methods
+    - Include rollback plan for risky changes
+  tasks:
+    - Each task = scenario(s) → write test → implement → verify
+    - No task done without passing test
+    - Reference spec requirements by ID

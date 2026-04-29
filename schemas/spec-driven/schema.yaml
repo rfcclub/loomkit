@@ -1,0 +1,79 @@
+name: spec-driven
+version: 1
+description: LoomKit spec-driven workflow with TDD enforcement
+
+artifacts:
+  - id: brainstorm
+    generates: proposal.md
+    description: Socratic dialogue to refine idea into proposal
+    template: proposal.md
+    instruction: |
+      Explore project context first (files, docs, recent commits).
+      Ask clarifying questions one at a time.
+      Propose 2-3 approaches with trade-offs and your recommendation.
+      Present design section-by-section, get approval after each.
+      Write proposal.md when design is approved.
+      Do NOT write any code. Design only.
+    requires: []
+
+  - id: specs
+    generates: "specs/**/*.md"
+    description: Requirements-as-code with WHEN/THEN scenarios
+    template: spec.md
+    instruction: |
+      Create one spec file per capability from proposal's Capabilities section.
+      Each requirement: ### Requirement: <name> with RFC 2119 keywords (SHALL/MUST/SHOULD/MAY).
+      Each scenario: #### Scenario: <name> with WHEN/THEN format.
+      THEN assertions use typed operators: =, !=, contains, matches, is a, >, <.
+      Every requirement MUST have at least one scenario.
+      Use ADDED/MODIFIED/REMOVED/RENAMED delta operations for changes to existing specs.
+      MODIFIED requirements MUST include full updated content.
+      REMOVED requirements MUST include Reason and Migration.
+      Scenarios MUST be directly translatable to test cases.
+    requires:
+      - brainstorm
+
+  - id: design
+    generates: design.md
+    description: Technical design with test strategy
+    template: design.md
+    instruction: |
+      Create the design document explaining HOW to implement the change.
+      Include: Context, Goals/Non-Goals, Decisions with rationale.
+      MUST include Test Strategy section: which framework, how scenarios map to tests.
+      Include Risks/Trade-offs and Open Questions.
+      Focus on architecture and approach, not line-by-line implementation.
+    requires:
+      - brainstorm
+
+  - id: tasks
+    generates: tasks.md
+    description: Bite-sized TDD implementation plan
+    template: tasks.md
+    instruction: |
+      Create the implementation plan with bite-sized tasks (2-5 min per step).
+      Every step MUST contain exact code — no placeholders (TBD, TODO, "implement later").
+      Every code step MUST specify exact file path (Create/Modify/Test).
+      TDD cycle per task: write failing test → verify fail → implement → verify pass → commit.
+      No cross-task references ("similar to Task N") — repeat the code.
+      Implementation before test = reorder to write test first.
+      Self-review after: spec coverage check, placeholder scan, type consistency.
+    requires:
+      - specs
+      - design
+
+apply:
+  requires: [tasks]
+  tracks: tasks.md
+  instruction: |
+    Work through tasks in order. Each task follows TDD:
+    1. RED: Write failing test from scenario
+    2. Verify test fails (feature missing, not typo)
+    3. GREEN: Write minimal code to pass
+    4. Verify test passes + all other tests still pass
+    5. REFACTOR: Clean up while keeping tests green
+    6. VERIFY: Run full test suite
+    7. Commit with descriptive message
+    8. Update .traceability.yaml
+    Iron Law: No production code without a failing test first.
+    Code written before test? Delete and start over.

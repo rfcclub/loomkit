@@ -9,7 +9,7 @@ const TddConfigSchema = z.object({
 
 const LoomKitConfigSchema = z.object({
   schema: z.enum(['spec-driven']).default('spec-driven'),
-  tdd: TddConfigSchema.default({}),
+  tdd: TddConfigSchema.optional(),
   context: z.string().default(''),
   rules: z.record(z.array(z.string())).default({}),
 });
@@ -28,7 +28,7 @@ function substituteEnvVars(value: string): string {
 
 export function loadConfig(yamlContent: string | null): LoomKitConfig {
   if (!yamlContent) {
-    return LoomKitConfigSchema.parse({ tdd: {} });
+    return LoomKitConfigSchema.parse({ tdd: TddConfigSchema.parse({}) });
   }
 
   // Simple YAML parsing for flat structure
