@@ -1,15 +1,12 @@
 {
   "name": "loomkit",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "description": "Spec-Driven Design Framework with TDD Superpowers",
   "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "loomkit": "dist/cli/index.js"
+  },
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
@@ -21,5 +18,8 @@
     "vitest": "^4.1.5",
     "yaml": "^2.8.3",
     "zod": "^4.3.6"
-  }
+  },
+  "keywords": ["spec-driven", "tdd", "design-framework"],
+  "author": "",
+  "license": "ISC"
 }
