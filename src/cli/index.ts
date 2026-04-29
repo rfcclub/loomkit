@@ -8,6 +8,7 @@ import { cmdVerify } from './commands/verify.js';
 import { cmdArchive } from './commands/archive.js';
 import { cmdStatus } from './commands/status.js';
 import { cmdAdapt } from './commands/adapt.js';
+import { cmdPublish } from './commands/publish.js';
 
 const command = process.argv[2];
 const args = process.argv.slice(3);
@@ -37,6 +38,10 @@ switch (command) {
     const reasonIdx = process.argv.indexOf('--reason');
     const reason = reasonIdx >= 0 ? process.argv[reasonIdx + 1] : '';
     cmdArchive(args[0], { force, reason });
+    break;
+  case 'publish':
+    const dryRun = process.argv.includes('--dry-run');
+    cmdPublish({ dryRun });
     break;
   case 'status':
     cmdStatus();
@@ -69,6 +74,7 @@ Commands:
   plan <name>             Add tasks.md to existing change
   verify [name]           Run coverage gate (all changes if no name)
   archive <name>          Archive verified change
+  publish [--dry-run]     Publish current version to npm
   status                  Show current changes + coverage
   adapt <tool>            Show adapter instructions (claude-code | codex)
   help                    Show this help
