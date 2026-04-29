@@ -1,6 +1,8 @@
 import { join } from 'path';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from 'fs';
 import { getChangeDir, getSpecsDir, changeExists } from '../utils.js';
+import { parseDeltaSpec, parseSpec, mergeSpecs } from '../../spec/index.js';
+import { formatSpec } from '../../spec/format.js';
 
 export function cmdArchive(name: string, options: { force?: boolean; reason?: string }): void {
   if (!changeExists(name)) {
@@ -33,8 +35,24 @@ export function cmdArchive(name: string, options: { force?: boolean; reason?: st
     process.exit(1);
   }
 
-  // Archive: move change dir to archive/
-  const archiveDir = join(getSpecsDir(), '..', 'archive');
+  // Step 1: Merge spec into living specs
+  const specsDir = getSpecsDir();
+  mergeSpecIntoLiving(name, changeDir, specsDir);
+
+  // Step 2: Bump version
+  const pkgPath = join(getChangeDir(name), '..', '..', '..', 'package.json');
+  let newVersion: string | null = null;
+  if (existsSync(pkgPath)) {
+    try {
+      newVersion = bumpVersion(pkgPath);
+      console.log(`  Version: ${newVersion}`);
+    } catch (e) {
+      console.log(`  ⚠  Version bump skipped: ${e}`);
+    }
+  }
+
+  // Step 3: Move change dir to archive/
+  const archiveDir = join(specsDir, '..', 'archive');
   mkdirSync(archiveDir, { recursive: true });
 
   const archivePath = join(archiveDir, `${name}-${Date.now()}`);
@@ -48,6 +66,7 @@ export function cmdArchive(name: string, options: { force?: boolean; reason?: st
     forced: !!options.force,
     reason: options.reason || null,
     verified,
+    version: newVersion,
   };
   writeFileSync(metaPath, JSON.stringify(metadata, null, 2), 'utf-8');
 
@@ -56,4 +75,46 @@ export function cmdArchive(name: string, options: { force?: boolean; reason?: st
   if (options.force) {
     console.log(`  ⚠  Forced archive (reason: ${options.reason})`);
   }
+  if (newVersion) {
+    console.log(`  🏷  Tagged v${newVersion}`);
+  }
+}
+
+export async function mergeSpecIntoLiving(
+  name: string,
+  changeDir: string,
+  specsDir: string,
+): Promise<void> {
+  const specFile = join(changeDir, 'specs', name, 'spec.md');
+  if (!existsSync(specFile)) return;
+
+  const deltaContent = readFileSync(specFile, 'utf-8');
+  const delta = parseDeltaSpec(deltaContent);
+
+  const livingSpecDir = join(specsDir, name);
+  mkdirSync(livingSpecDir, { recursive: true });
+  const livingSpecFile = join(livingSpecDir, 'spec.md');
+
+  let living;
+  if (existsSync(livingSpecFile)) {
+    living = parseSpec(readFileSync(livingSpecFile, 'utf-8'));
+  } else {
+    living = { title: name, purpose: '', requirements: [], warnings: [], schemaVersion: 1 };
+  }
+
+  const merged = mergeSpecs(living, delta);
+  const md = formatSpec(merged);
+  writeFileSync(livingSpecFile, md, 'utf-8');
+
+  console.log(`  📋 Updated living spec: ${livingSpecFile}`);
+}
+
+export function bumpVersion(pkgPath: string): string {
+  const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
+  const parts = pkg.version.split('.').map(Number);
+  parts[2] += 1;
+  const newVersion = parts.join('.');
+  pkg.version = newVersion;
+  writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf-8');
+  return newVersion;
 }
