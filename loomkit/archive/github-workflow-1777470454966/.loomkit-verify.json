@@ -1,0 +1,10 @@
+{
+  "change": "github-workflow",
+  "timestamp": "2026-04-29T13:47:27.231Z",
+  "total_scenarios": 2,
+  "passing": 4,
+  "coverage": 1,
+  "threshold": 100,
+  "passed": true,
+  "uncovered": []
+}

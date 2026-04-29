@@ -1,0 +1,9 @@
+scenarios:
+  - scenario: pr-verify-gate-pr-with-passing-coverage
+    status: passing
+  - scenario: pr-verify-gate-pr-with-failing-coverage
+    status: passing
+  - scenario: release-on-archive-archive-triggers-release
+    status: passing
+  - scenario: release-on-archive-manual-release-skip
+    status: passing

@@ -1,0 +1,26 @@
+# LoomKit Configuration
+schema: spec-driven
+
+tdd:
+  framework: vitest
+  enforce: true
+  coverage_threshold: 100
+
+context: |
+  LoomKit is a spec-driven design framework with TDD superpowers for AI agents and humans.
+
+rules:
+  proposal:
+    - Include motivation and non-goals
+    - Identify affected capabilities
+  specs:
+    - Every requirement needs at least one scenario
+    - Scenarios use WHEN/THEN format
+    - Use SHALL/MUST/SHOULD (RFC 2119)
+  design:
+    - Include test strategy section
+    - Map scenarios to test files
+  tasks:
+    - Bite-sized steps (2-5 min each)
+    - Exact code in every step, no placeholders
+    - TDD cycle: write failing test, verify fail, implement, verify pass
