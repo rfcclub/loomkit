@@ -1,4 +1,4 @@
-import type { SpecTree, Requirement } from '../spec/parser.js';
+import type { SpecTree } from '../spec/parser.js';
 
 export function formatSpec(spec: SpecTree): string {
   const parts: string[] = [];
@@ -25,7 +25,7 @@ export function formatSpec(spec: SpecTree): string {
     parts.push('');
 
     for (const sc of req.scenarios) {
-      parts.push(`#### Scenario: ${sc.id.replace(/^[^-]+-/, '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}`);
+      parts.push(`#### Scenario: ${sc.title}`);
       parts.push('');
 
       for (const when of sc.when) {

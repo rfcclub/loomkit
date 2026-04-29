@@ -79,7 +79,7 @@ export function parseSpec(markdown) {
                 }
             }
             const id = slugify(`${reqTitle} ${scTitle}`);
-            scenarios.push({ id, when, then });
+            scenarios.push({ id, title: scTitle, when, then });
             scenarioIndex++;
         }
         requirements.push({ title: reqTitle, strength, description, scenarios });
