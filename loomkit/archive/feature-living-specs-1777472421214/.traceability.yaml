@@ -1,0 +1,11 @@
+scenarios:
+  - scenario: archive-merges-delta-into-living-specs-archive-with-no-existing-living-spec
+    status: passing
+  - scenario: archive-merges-delta-into-living-specs-archive-with-existing-living-spec
+    status: passing
+  - scenario: auto-version-bump-on-archive-archive-bumps-version
+    status: passing
+  - scenario: publish-to-npm-publish-dry-run
+    status: passing
+  - scenario: publish-to-npm-publish-live
+    status: passing

@@ -1,0 +1,10 @@
+{
+  "change": "feature-living-specs",
+  "timestamp": "2026-04-29T14:19:59.483Z",
+  "total_scenarios": 3,
+  "passing": 5,
+  "coverage": 1,
+  "threshold": 100,
+  "passed": true,
+  "uncovered": []
+}

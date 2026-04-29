@@ -6,3 +6,4 @@ export { validateSpec } from './validator.js';
 export type { ValidationResult } from './validator.js';
 export { parseDeltaSpec, mergeSpecs } from './delta.js';
 export type { DeltaSpec } from './delta.js';
+export { formatSpec } from './format.js';

@@ -1,6 +1,6 @@
 {
   "name": "@gotako/loomkit",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Spec-Driven Design Framework with TDD Superpowers",
   "type": "module",
   "main": "dist/index.js",
