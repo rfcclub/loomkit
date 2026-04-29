@@ -1,116 +1,53 @@
 ---
 name: spec
-description: Use when a proposal has been approved and requirements need to be written as structured, testable scenarios
+description: Use when formalising requirements as structured specs with scenarios (WHEN/THEN), outputting specs/<name>/spec.md
 ---
 
 # Spec
 
 ## Overview
 
-Write requirements-as-code using RFC 2119 keywords and WHEN/THEN scenarios. Each scenario maps directly to a test case. Specs are the source of truth for what the system must do.
+Write requirements-as-code using RFC 2119 keywords and WHEN/THEN scenarios. Specs become the test contract for TDD.
 
 ## When to Use
 
-- After a proposal is approved (proposal.md exists)
-- Before any design work begins
-- When adding a new capability (new spec file)
-- When modifying an existing capability (delta spec)
+- After brainstorming — formal requirements needed
+- Before design — requirements must be clear first
+- When a spec needs updating (after archive merges)
+- `/lk:spec` in Claude Code; equivalent trigger in other tools
 
 ## Instructions
 
-### 1. Create the Change Directory
-
-Ensure `loomkit/changes/<change-name>/` exists (created by brainstorm phase).
-
-### 2. Create Spec Files
-
-For each capability listed in the proposal, create `loomkit/changes/<change-name>/specs/<capability-name>/spec.md`.
-
-Use the template from `loomkit/schemas/spec-driven/templates/spec.md`:
-
-```markdown
-## ADDED Requirements
-
-### Requirement: <requirement-name>
-<requirement text using SHALL/MUST/SHOULD>
-
-#### Scenario: <scenario-name>
-- **WHEN** <condition>
-- **THEN** <expected outcome with assertion (=, !=, contains, matches, >, <, is a)>
-```
-
-#### RFC 2119 Keywords
-
-| Keyword | Meaning | Gate |
-|---------|---------|------|
-| **SHALL** / **MUST** | Absolute requirement | Mandatory for verify gate |
-| **SHOULD** | Recommended, may be omitted | Optional |
-| **MAY** | Truly optional | Optional |
-
-- Mandatory scenarios (under SHALL/MUST) are checked by the verify gate
-- Use SHALL for system behavior, MUST for API contracts
-
-#### WHEN/THEN Rules
-
-- **No OR in WHEN or THEN** — split into separate scenarios
-- **Multiple AND clauses OK** in both WHEN and THEN
-- Each scenario tests exactly one behavior
-- WHEN describes the triggering condition
-- THEN describes expected outcome with typed assertion
-- Scenario names must be unique within the spec
-
-#### Assertion Types
-
-| Assertion | Meaning | Usage |
-|-----------|---------|-------|
-| `=` | equals | exact value match |
-| `!=` | not equals | value mismatch |
-| `contains` | contains value | string/array inclusion |
-| `matches` | matches pattern | regex or type match |
-| `>` / `<` | comparison | numeric comparison |
-| `is a` | type check | instanceof / typeof |
-
-#### Spec File Types
-
-**Delta spec** (in `loomkit/changes/<name>/specs/`):
-- `## ADDED Requirements` — new requirements for this change
-- `## MODIFIED Requirements` — existing requirements being changed
-- `## REMOVED Requirements` — requirements being removed
-- `## RENAMED Requirements` — requirements being renamed
-
-Use deltas for proposed changes. Living specs are updated during archive.
-
-### 3. Spec Self-Review
-
-After writing all spec files, review:
-
-- [ ] Every capability from the proposal has at least one spec file
-- [ ] Every Requirement uses an RFC 2119 keyword (SHALL/MUST/SHOULD)
-- [ ] Every Requirement has at least one Scenario
-- [ ] No OR in any WHEN or THEN clause
-- [ ] Each Scenario name is unique within its spec
-- [ ] THEN assertions use the correct typed assertion operators
-- [ ] Scenarios are testable — each one implies a concrete test
+1. **Identify capabilities.** What system boundaries does this affect?
+2. **Write `### Requirement:` blocks.** Each starts with RFC 2119 keyword:
+   - `SHALL` / `MUST` — mandatory (these drive test coverage gates)
+   - `SHOULD` — recommended
+   - `MAY` — optional
+3. **For each Requirement, write `#### Scenario:` blocks.**
+   - Format: `WHEN <condition> THEN <expected outcome>`
+   - Multiple AND clauses OK in WHEN or THEN
+   - NO OR in scenarios — split into separate scenarios
+   - Scenario ID: auto-increment (`SC-001`, `SC-002`...)
+4. **Save to** `specs/<capability>/spec.md` inside the change directory:
+   `changes/<name>/specs/<capability>/spec.md`
+5. If updating living specs (not a change), save to `specs/<capability>/spec.md` at project root.
 
 ## Output
 
-- `loomkit/changes/<change-name>/specs/<capability-name>/spec.md` (one per new capability)
-- Or: delta spec files for modified capabilities
+- `changes/<name>/specs/<capability>/spec.md`
 
 ## Validation
 
-- [ ] Run the spec parser/validator: `npx tsx src/spec/parser.ts loomspec/changes/<change-name>/specs/`
-- [ ] Every requirement has ≥1 scenario
-- [ ] All scenarios use WHEN/THEN format
-- [ ] No OR in any clause
-- [ ] RFC 2119 keywords are correct for each requirement
+- Every `### Requirement:` starts with SHALL/MUST/SHOULD/MAY
+- Every Requirement has ≥1 Scenario
+- No OR in Scenario WHEN/THEN clauses
+- Each Scenario ID is unique within the file
+- Scenarios are translatable to test cases (concrete conditions)
 
 ## Anti-Patterns
 
-- Writing scenarios with OR in WHEN/THEN — split them
-- Scenarios that describe implementation ("WHEN method X is called") instead of behavior ("WHEN user submits empty form")
-- Vague THEN clauses without typed assertions
-- Requirements without any scenarios
-- Copying spec structure without understanding the behavior
-- Scenarios that cannot be translated to test cases
-- Writing implementation details in specs — specs define WHAT, not HOW
+- `OR` in scenarios — always split
+- Vague conditions ("WHEN user does something") — be concrete
+- Requirements without scenarios (they can't be tested)
+- Mixing SHALL and SHOULD in same requirement — keep separate
+- Writing implementation details in scenarios (that's design's job)
