@@ -1,176 +1,64 @@
 ---
 name: tdd
-description: Use during implementation — enforces test-first discipline and maintains scenario→test traceability
+description: Use when implementing code following RED/GREEN/REFACTOR cycle with scenario traceability
 ---
 
 # TDD (Test-Driven Development)
 
 ## Overview
 
-Implement code using the RED/GREEN/REFACTOR cycle. The Iron Law: no production code without a failing test first. Every scenario from the spec maps to exactly one test. Traceability is maintained in `.traceability.yaml`.
+Iron Law: no production code without a failing test first. RED → GREEN → REFACTOR cycle per requirement. Every test maps to a spec scenario.
 
 ## When to Use
 
-- During implementation of any task from `tasks.md`
-- Whenever writing new code or fixing bugs
-- When adding features to existing code
+- When implementing a task from tasks.md
+- When writing production code
+- When fixing a bug (write failing test first)
+- `/lk:apply` in Claude Code; equivalent trigger in other tools
 
 ## Instructions
 
-### The Iron Law
-
-```
-NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
-```
-
-**If code was written before the test:** Delete it. Start over. No exceptions.
-
-### RED/GREEN/REFACTOR Cycle
-
-#### RED — Write Failing Test
-
-Write one test that demonstrates the desired behavior. Follow the spec scenarios:
-
-- One test per scenario (or one test per logical behavior)
-- Test name describes the behavior clearly
-- Uses real code, not mocks (unless unavoidable)
-- Tests ONE thing — if test name has "and", split it
-
-```typescript
-// GOOD: clear name, tests one behavior, matches a spec scenario
-test('rejects empty email', () => {
-  const result = validateEmail('');
-  expect(result.error).toBe('Email required');
-});
-
-// BAD: vague name, tests multiple things
-test('email stuff works', () => {
-  // ...
-});
-```
-
-#### Verify RED — Watch It Fail
-
-**MANDATORY. Never skip this step.**
-
-```bash
-vitest run tests/path/to/test.ts --reporter=verbose
-```
-
-Confirm:
-- Test fails (not errors)
-- Failure message is the expected one ("Email required" was not returned)
-- Fails because feature is missing, not because of a typo
-
-**Test passes?** You're testing existing behavior. Fix the test.
-**Test errors?** Fix the error first, then re-run until it fails correctly.
-
-#### GREEN — Minimal Implementation
-
-Write the simplest code to make the test pass. Nothing more.
-
-```typescript
-function validateEmail(email: string): { error?: string } {
-  if (!email.trim()) {
-    return { error: 'Email required' };
-  }
-  return {};
-}
-```
-
-**Rules:**
-- No extra features (YAGNI)
-- No refactoring of unrelated code
-- No "improving" beyond what the test requires
-- Minimal = exactly enough to pass
-
-#### Verify GREEN — Watch It Pass
-
-**MANDATORY.**
-
-```bash
-vitest run tests/path/to/test.ts --reporter=verbose
-```
-
-Confirm:
-- Test passes
-- No other tests broken (run full suite)
-- Output pristine (no errors, warnings)
-
-**Test fails?** Fix the implementation, not the test.
-**Other tests break?** Fix them now.
-
-#### REFACTOR — Clean Up
-
-After green:
-- Remove duplication
-- Improve names
-- Extract helpers
-- Improve error messages
-
-Keep tests passing. Don't add behavior during refactor.
-
-### Update Traceability
-
-After each task in the TDD cycle, update `.traceability.yaml`:
-
-```yaml
-traceability:
-  - scenario: "FOO-REQ1-SC1"
-    description: "rejects empty email"
-    test_file: "tests/validation/email.test.ts"
-    test_name: "rejects empty email"
-    status: "passing"
-  - scenario: "FOO-REQ1-SC2"
-    description: "accepts valid email"
-    test_file: "tests/validation/email.test.ts"
-    test_name: "accepts valid email"
-    status: "passing"
-```
-
-Each entry maps one scenario ID (from the spec) to:
-- `scenario` — the scenario ID from the spec
-- `description` — human-readable description
-- `test_file` — relative path to the test file
-- `test_name` — the exact test name
-- `status` — `passing`, `failing`, or `not_implemented`
-
-### Verify Traceability Coverage
-
-After each task, run:
-
-```bash
-npx tsx src/tdd/traceability.ts --specs loomkit/changes/<name>/specs/ --traceability loomkit/changes/<name>/.traceability.yaml
-```
-
-This checks:
-- Every mandatory scenario (SHALL/MUST) has a traceability entry
-- No test is mapped to a non-existent scenario
-- Statuses are consistent
+1. **Iron Law:** If any production code exists without a preceding failing test, **delete the code**, write the test first, then re-implement.
+2. **RED phase:** Write a test that fails for the right reason:
+   - Test exactly one scenario (or cohesive subset)
+   - Test name references scenario ID: `SC-001: user can login with valid credentials`
+   - Run test → confirm RED (failure is informative, not a crash)
+3. **GREEN phase:** Write minimal production code to pass the test:
+   - No extra functionality beyond what the test demands
+   - Run test → confirm GREEN
+4. **REFACTOR phase:** Clean up:
+   - Remove duplication
+   - Improve naming
+   - Extract helpers if needed
+   - Tests must still pass after refactor
+5. **Commit:** `feat: SC-001 — user login (tdd)`
+6. **After all tasks complete:** Generate `.traceability.yaml` mapping:
+   ```yaml
+   scenarios:
+     SC-001:
+       test: tests/auth/login.test.ts
+       status: pass
+     SC-002:
+       test: tests/auth/logout.test.ts
+       status: pass
+   ```
 
 ## Output
 
-- Implementation code in `src/` (or appropriate source directory)
-- Test files in `tests/` (or appropriate test directory)
-- `.traceability.yaml` in the change directory (`loomkit/changes/<change-name>/`)
+- Production code + test files
+- `.traceability.yaml` in change directory
 
 ## Validation
 
-- [ ] Every test was written before the code it tests (RED first)
-- [ ] Every test was verified to fail before implementation (RED verification)
-- [ ] Every test passes after implementation (GREEN verification)
-- [ ] All mandatory scenarios (SHALL/MUST) have traceability entries
-- [ ] `.traceability.yaml` is valid YAML with all required fields
-- [ ] Traceability coverage check passes with 0 errors
+- No production code committed without preceding failing test
+- Every test name references a scenario ID
+- REFACTOR does not break tests
+- Traceability covers all SHALL/MUST scenarios
 
 ## Anti-Patterns
 
-- Writing code before tests — delete and start over
-- Skipping RED verification ("I know it'll fail") — watch it fail
-- Using mocks when real code would work
-- Writing multiple behaviors in one test ("email and domain and whitespace")
-- Adding features not in the spec during GREEN
-- Not updating traceability after each task
-- Refactoring without tests passing
-- Writing implementation tests (testing HOW) instead of behavior tests (testing WHAT)
-- Committing without verifying the full test suite still passes
+- Writing production code first (breaks Iron Law) — delete and restart
+- Writing tests after code — delete code, rewrite test first
+- Tests that pass for wrong reasons (false positives)
+- Refactoring without re-running tests
+- Missing traceability mapping at end
