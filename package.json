@@ -1,5 +1,5 @@
 {
-  "name": "loomkit",
+  "name": "@gotako/loomkit",
   "version": "1.0.0",
   "description": "Spec-Driven Design Framework with TDD Superpowers",
   "type": "module",
@@ -19,7 +19,9 @@
     "yaml": "^2.8.3",
     "zod": "^4.3.6"
   },
-  "keywords": ["spec-driven", "tdd", "design-framework"],
+  "publishConfig": {
+    "access": "public"
+  },
   "author": "",
   "license": "ISC"
 }
