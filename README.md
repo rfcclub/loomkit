@@ -6,7 +6,7 @@ Spec-driven design framework with TDD superpowers. For AI agents and humans.
 
 ```bash
 # Install
-pnpm add -g @rfcclub/loomkit    # coming soon
+pnpm add -g @gotako/loomkit
 # OR use from repo
 cd ~/repo/loomkit
 pnpm build
