@@ -1,6 +1,7 @@
 import { parseAssertion } from './assertion.js';
 export interface Scenario {
     id: string;
+    title: string;
     when: string[];
     then: {
         text: string;

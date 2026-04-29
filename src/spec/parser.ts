@@ -2,6 +2,7 @@ import { parseAssertion } from './assertion.js';
 
 export interface Scenario {
   id: string;
+  title: string;
   when: string[];
   then: { text: string; assertion: ReturnType<typeof parseAssertion> }[];
 }
@@ -113,7 +114,7 @@ export function parseSpec(markdown: string): SpecTree {
       }
 
       const id = slugify(`${reqTitle} ${scTitle}`);
-      scenarios.push({ id, when, then });
+      scenarios.push({ id, title: scTitle, when, then });
       scenarioIndex++;
     }
 
