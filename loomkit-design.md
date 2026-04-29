@@ -181,6 +181,39 @@ src/
 - Validation tool checks artifacts: format correct? TDD order? Coverage met?
 - Human reads markdown → reviews → approves/rejects via git
 
+## Coding Tool Support
+
+LoomKit targets AI coding agents. Each tool has different conventions for how agents receive instructions.
+
+### Core Support (now)
+
+| Tool | Instruction Method | Notes |
+|------|-------------------|-------|
+| **Claude Code** | `CLAUDE.md` + skill files in `~/.claude/skills/` | SKILL.md format native |
+| **Codex** | `AGENTS.md` + instructions | OpenClaw-style instructions |
+
+SKILL.md files work as-is for Claude Code. For Codex, LoomKit generates equivalent `AGENTS.md` fragments or the human adapts SKILL.md into Codex instructions.
+
+### Future Support (planned)
+
+| Tool | Type | Integration Path |
+|------|------|----------------|
+| **Claude Cowork** | Desktop app (multi-agent) | TBD — likely shared context files + SKILL.md |
+| **Codex (app)** | Desktop app | TBD — likely OpenClaw adapter or native plugin |
+
+Design principle: **same markdown artifacts, different instruction adapters**. The spec/plan/verify output doesn't change per tool — only how the agent *receives* the workflow instructions changes.
+
+```
+loomkit/
+├── skills/              # SKILL.md (tool-agnostic source of truth)
+├── adapters/
+│   ├── claude-code/     # CLAUDE.md + ~/.claude/skills/ format
+│   ├── codex/           # AGENTS.md format
+│   ├── claude-cowork/   # (future) app integration
+│   └── codex-app/       # (future) app integration
+└── src/                 # validation tool (shared)
+```
+
 **Don't** import `@fission-ai/openspec` or copy Superpowers code
 **Do** read their source to understand methodology, reimplement cleanly
 
@@ -188,4 +221,4 @@ src/
 
 *Design: Aria — 2026-04-29*
 *Sources: ~/repo/OpenSpec (MIT), ~/repo/superpowers (MIT)*
-*Updated: 2026-04-29 — clarified dual-user model (agent + human)*
+*Updated: 2026-04-29 — dual-user model, coding tool adapters (Claude Code + Codex + future apps)*
