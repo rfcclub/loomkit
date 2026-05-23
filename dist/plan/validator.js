@@ -21,60 +21,80 @@ const VAGUE_PATTERNS = [
 export function validatePlan(plan) {
     const errors = [];
     const warnings = [];
-    // Check placeholders
+    // 1. Check Superpowers Sub-Skill Header Block
+    const hasSuperpowersHeader = plan.includes('REQUIRED SUB-SKILL') &&
+        (plan.includes('superpowers:subagent-driven-development') || plan.includes('superpowers:executing-plans'));
+    if (!hasSuperpowersHeader) {
+        errors.push('Superpowers compliance failure: Plan must start with the REQUIRED SUB-SKILL header block specifying superpowers:subagent-driven-development or superpowers:executing-plans.');
+    }
+    // 2. Check placeholders
     for (const pattern of PLACEHOLDER_PATTERNS) {
         const match = plan.match(pattern);
         if (match) {
             errors.push(`placeholder detected: "${match[0]}", replace with actual code`);
         }
     }
-    // Check vague instructions
+    // 3. Check vague instructions
     for (const pattern of VAGUE_PATTERNS) {
         const match = plan.match(pattern);
         if (match) {
             errors.push(`vague instruction: "${match[0]}", show exact code`);
         }
     }
-    // Check cross-task references
+    // 4. Check cross-task references
     for (const pattern of CROSS_REF_PATTERNS) {
         const match = plan.match(pattern);
         if (match) {
             errors.push(`cross-reference detected: "${match[0]}", repeat the code instead`);
         }
     }
-    // Check file paths — each task should have Files section
+    // 5. Check task-level structure and TDD order
     const taskBlocks = plan.split(/^### Task \d+/m).slice(1);
+    if (taskBlocks.length === 0) {
+        warnings.push('Plan contains no task blocks (use "### Task N" format).');
+    }
     for (let i = 0; i < taskBlocks.length; i++) {
         const block = taskBlocks[i];
-        if (!block.includes('**Files:**') && !block.includes('**Files:**')) {
-            // Check if steps have Create/Modify/Test prefixes
-            const hasFilePath = /(?:Create|Modify|Test):\s*`/.test(block);
-            if (!hasFilePath) {
-                errors.push(`Task ${i + 1}: missing file paths (add **Files:** section)`);
-            }
+        const taskNum = i + 1;
+        // Check files section
+        const hasFilesHeader = block.includes('**Files:**');
+        const hasFilePath = /(?:Create|Modify|Test):\s*`/.test(block);
+        if (!hasFilesHeader && !hasFilePath) {
+            errors.push(`Task ${taskNum}: missing file paths (add **Files:** section with Create/Modify/Test paths)`);
         }
-    }
-    // Check TDD order — implementation steps should not appear before test steps within a task
-    const steps = plan.split(/^-\s*\[[ x]\]\s*\*\*Step\s*\d+:/m).slice(1);
-    let lastStepType = null;
-    let currentTask = 0;
-    // Re-split by task to check per-task TDD order
-    const tasks = plan.split(/^### Task/m).slice(1);
-    for (const task of tasks) {
-        const stepLines = task.match(/^-\s*\[[ x]\]\s*\*\*Step\s*\d+:[^*]+\*\*/gm) || [];
-        let foundImplement = false;
+        // Check checkboxes for steps
+        const stepLines = block.match(/^-\s*\[[ x]\]\s*\*\*Step\s*\d+:[^*]+\*\*/gm) || [];
+        if (stepLines.length === 0) {
+            errors.push(`Task ${taskNum}: has no checkboxes (each step must use "- [ ] **Step N: ...**" syntax)`);
+            continue;
+        }
+        // Check TDD sequence: test, implement, commit
         let foundTest = false;
+        let foundImplement = false;
+        let foundCommit = false;
         for (const step of stepLines) {
             const lower = step.toLowerCase();
-            if (lower.includes('implement') || lower.includes('write minimal')) {
-                foundImplement = true;
-                if (!foundTest) {
-                    errors.push(`implementation before test: "${step.replace(/^- \[[ x]\] \*\*/, '').replace(/\*\*$/, '').trim()}" — reorder to write test first`);
-                }
-            }
-            if (lower.includes('failing test') || lower.includes('write the failing test') || lower.includes('write failing test')) {
+            if (lower.includes('test') || lower.includes('failing test')) {
                 foundTest = true;
             }
+            if (lower.includes('implement') || lower.includes('write minimal') || lower.includes('write minimal implementation')) {
+                foundImplement = true;
+                if (!foundTest) {
+                    errors.push(`Task ${taskNum}: TDD violation - implementation before test step: "${step.replace(/^- \[[ x]\] \*\*/, '').replace(/\*\*$/, '').trim()}" — reorder to write test first`);
+                }
+            }
+            if (lower.includes('commit') || lower.includes('git commit')) {
+                foundCommit = true;
+            }
+        }
+        if (!foundTest) {
+            errors.push(`Task ${taskNum}: missing failing test step (TDD RED cycle)`);
+        }
+        if (!foundImplement) {
+            errors.push(`Task ${taskNum}: missing minimal implementation step (TDD GREEN cycle)`);
+        }
+        if (!foundCommit) {
+            errors.push(`Task ${taskNum}: missing commit step (every task must end with a commit step)`);
         }
     }
     return {

@@ -74,4 +74,45 @@ artifacts:
     const schema = loadSchema(yaml, '/schemas/test');
     expect(schema.artifacts[0].templatePath).toBe('/schemas/test/templates/spec.md');
   });
+
+  it('loads workspace-planning schema with apply phase object (compatible with OpenSpec)', () => {
+    const yaml = `
+name: workspace-planning
+version: 1
+description: Workspace planning workflow for cross-area changes
+artifacts:
+  - id: proposal
+    generates: proposal.md
+    description: Shared workspace proposal
+    template: proposal.md
+  - id: specs
+    generates: "specs/**/*.md"
+    description: Workspace-scoped specs
+    template: spec.md
+  - id: design
+    generates: design.md
+    description: Cross-area technical design
+    template: design.md
+  - id: tasks
+    generates: tasks.md
+    description: Workspace coordination tasks
+    template: tasks.md
+apply:
+  requires:
+    - tasks
+  tracks: tasks.md
+  instruction: "Read the workspace planning context."
+`;
+    const schema = loadSchema(yaml);
+    expect(schema.name).toBe('workspace-planning');
+    expect(schema.version).toBe(1);
+    expect(schema.artifacts).toHaveLength(4);
+    
+    // Verify it parses the polymorphic apply object
+    const apply = schema.apply as any;
+    expect(apply).toBeDefined();
+    expect(apply.requires).toContain('tasks');
+    expect(apply.tracks).toBe('tasks.md');
+    expect(apply.instruction).toBe('Read the workspace planning context.');
+  });
 });

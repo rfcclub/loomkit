@@ -33,8 +33,15 @@ describe('Plan Validator', () => {
   });
 
   it('passes on valid TDD plan with exact code and file paths', () => {
-    const plan = `## 1. Setup\n\n### Task 1: Email validation\n\n**Files:**\n- Create: src/validate.ts\n- Test: tests/validate.test.ts\n\n- [ ] **Step 1: Write the failing test**\n\n\`\`\`ts\ntest('validates email', () => {\n  expect(validate('a@b.com')).toBe(true);\n});\n\`\`\`\n\n- [ ] **Step 2: Run test to verify it fails**\n\nRun: vitest run tests/validate.test.ts\nExpected: FAIL\n\n- [ ] **Step 3: Write minimal implementation**\n\n\`\`\`ts\nexport function validate(email: string): boolean {\n  return email.includes('@');\n}\n\`\`\`\n\n- [ ] **Step 4: Run test to verify it passes**\n\nRun: vitest run tests/validate.test.ts\nExpected: PASS\n\n- [ ] **Step 5: Commit**\n\n\`\`\`bash\ngit add tests/validate.test.ts src/validate.ts && git commit -m "feat: email validation"\n\`\`\`\n`;
+    const plan = `> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (- [ ]) syntax for tracking.\n\n## 1. Setup\n\n### Task 1: Email validation\n\n**Files:**\n- Create: src/validate.ts\n- Test: tests/validate.test.ts\n\n- [ ] **Step 1: Write the failing test**\n\n\`\`\`ts\ntest('validates email', () => {\n  expect(validate('a@b.com')).toBe(true);\n});\n\`\`\`\n\n- [ ] **Step 2: Run test to verify it fails**\n\nRun: vitest run tests/validate.test.ts\nExpected: FAIL\n\n- [ ] **Step 3: Write minimal implementation**\n\n\`\`\`ts\nexport function validate(email: string): boolean {\n  return email.includes('@');\n}\n\`\`\`\n\n- [ ] **Step 4: Run test to verify it passes**\n\nRun: vitest run tests/validate.test.ts\nExpected: PASS\n\n- [ ] **Step 5: Commit**\n\n\`\`\`bash\ngit add tests/validate.test.ts src/validate.ts && git commit -m "feat: email validation"\n\`\`\`\n`;
     const result = validatePlan(plan);
     expect(result.valid).toBe(true);
+  });
+
+  it('detects missing Superpowers sub-skill header block', () => {
+    const plan = `## 1. Setup\n\n### Task 1: Email validation\n\n**Files:**\n- Create: src/validate.ts\n- Test: tests/validate.test.ts\n\n- [ ] **Step 1: Write the failing test**\n\n\`\`\`ts\ntest('validates email', () => {\n  expect(validate('a@b.com')).toBe(true);\n});\n\`\`\`\n\n- [ ] **Step 2: Run test to verify it fails**\n\nRun: vitest run tests/validate.test.ts\nExpected: FAIL\n\n- [ ] **Step 3: Write minimal implementation**\n\n\`\`\`ts\nexport function validate(email: string): boolean {\n  return email.includes('@');\n}\n\`\`\`\n\n- [ ] **Step 4: Run test to verify it passes**\n\nRun: vitest run tests/validate.test.ts\nExpected: PASS\n\n- [ ] **Step 5: Commit**\n\n\`\`\`bash\ngit add tests/validate.test.ts src/validate.ts && git commit -m "feat: email validation"\n\`\`\`\n`;
+    const result = validatePlan(plan);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContainEqual(expect.stringContaining('Superpowers compliance failure'));
   });
 });
