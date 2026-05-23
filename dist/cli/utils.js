@@ -35,7 +35,10 @@ export function getPackageRoot() {
     return dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 }
 export function getBuiltinSchemasDir() {
-    return join(getPackageRoot(), 'schemas', 'spec-driven');
+    return join(getPackageRoot(), 'schemas');
+}
+export function getBuiltinAdaptersDir() {
+    return join(getPackageRoot(), 'adapters');
 }
 export function readConfig() {
     const configPath = join(getLoomKitDir(), 'config.yaml');

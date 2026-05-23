@@ -6,6 +6,7 @@ export declare function getSpecsDir(): string;
 export declare function getSchemasDir(): string;
 export declare function getPackageRoot(): string;
 export declare function getBuiltinSchemasDir(): string;
+export declare function getBuiltinAdaptersDir(): string;
 export declare function readConfig(): Record<string, any>;
 export declare function parseYamlSimple(yaml: string): Record<string, any>;
 export declare function changeExists(name: string): boolean;

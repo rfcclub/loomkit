@@ -14,22 +14,30 @@ const ApplyRuleSchema = z.object({
   to: z.string(),
 });
 
+const ApplyPhaseSchema = z.object({
+  requires: z.array(z.string()).min(1),
+  tracks: z.string().nullable().optional(),
+  instruction: z.string().optional(),
+});
+
 const WorkflowSchemaRaw = z.object({
   name: z.string(),
   version: z.number().int().positive(),
   description: z.string().optional(),
   artifacts: z.array(ArtifactDefSchema).min(1),
-  apply: z.array(ApplyRuleSchema).optional(),
+  apply: z.union([z.array(ApplyRuleSchema), ApplyPhaseSchema]).optional(),
 });
 
 export type ArtifactDef = z.infer<typeof ArtifactDefSchema>;
+export type ApplyRule = z.infer<typeof ApplyRuleSchema>;
+export type ApplyPhase = z.infer<typeof ApplyPhaseSchema>;
 
 export interface WorkflowSchema {
   name: string;
   version: number;
   description: string;
   artifacts: (ArtifactDef & { templatePath?: string })[];
-  apply: { from: string; to: string }[];
+  apply?: ApplyRule[] | ApplyPhase;
 }
 
 export function loadSchema(yaml: string, schemaDir?: string): WorkflowSchema {
@@ -50,6 +58,6 @@ export function loadSchema(yaml: string, schemaDir?: string): WorkflowSchema {
       ...a,
       templatePath: a.template ? `${dir}/templates/${a.template}` : undefined,
     })),
-    apply: parsed.apply || [],
+    apply: parsed.apply,
   };
 }

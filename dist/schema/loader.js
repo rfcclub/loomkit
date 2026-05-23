@@ -11,12 +11,17 @@ const ApplyRuleSchema = z.object({
     from: z.string(),
     to: z.string(),
 });
+const ApplyPhaseSchema = z.object({
+    requires: z.array(z.string()).min(1),
+    tracks: z.string().nullable().optional(),
+    instruction: z.string().optional(),
+});
 const WorkflowSchemaRaw = z.object({
     name: z.string(),
     version: z.number().int().positive(),
     description: z.string().optional(),
     artifacts: z.array(ArtifactDefSchema).min(1),
-    apply: z.array(ApplyRuleSchema).optional(),
+    apply: z.union([z.array(ApplyRuleSchema), ApplyPhaseSchema]).optional(),
 });
 export function loadSchema(yaml, schemaDir) {
     const parsed = WorkflowSchemaRaw.parse(parseYaml(yaml));
@@ -34,7 +39,7 @@ export function loadSchema(yaml, schemaDir) {
             ...a,
             templatePath: a.template ? `${dir}/templates/${a.template}` : undefined,
         })),
-        apply: parsed.apply || [],
+        apply: parsed.apply,
     };
 }
 //# sourceMappingURL=loader.js.map

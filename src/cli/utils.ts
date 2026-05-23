@@ -45,7 +45,11 @@ export function getPackageRoot(): string {
 }
 
 export function getBuiltinSchemasDir(): string {
-  return join(getPackageRoot(), 'schemas', 'spec-driven');
+  return join(getPackageRoot(), 'schemas');
+}
+
+export function getBuiltinAdaptersDir(): string {
+  return join(getPackageRoot(), 'adapters');
 }
 
 export function readConfig(): Record<string, any> {
