@@ -4,15 +4,20 @@ import { fileURLToPath } from 'url';
 
 export function getProjectRoot(): string {
   const cwd = process.cwd();
-  const loomkitDir = join(cwd, 'loomkit');
-  if (existsSync(loomkitDir) && statSync(loomkitDir).isDirectory()) {
-    return cwd;
+
+  // Check current directory for openspec/ or loomkit/
+  for (const dirname of ['openspec', 'loomkit']) {
+    const d = join(cwd, dirname);
+    if (existsSync(d) && statSync(d).isDirectory()) return cwd;
   }
 
+  // Walk up looking for openspec/ or loomkit/
   let dir = cwd;
   while (dir !== '/') {
-    if (existsSync(join(dir, 'loomkit')) && statSync(join(dir, 'loomkit')).isDirectory()) {
-      return dir;
+    for (const dirname of ['openspec', 'loomkit']) {
+      if (existsSync(join(dir, dirname)) && statSync(join(dir, dirname)).isDirectory()) {
+        return dir;
+      }
     }
     dir = dirname(dir);
   }
@@ -20,8 +25,17 @@ export function getProjectRoot(): string {
   return cwd;
 }
 
+/**
+ * Returns the workspace directory. Prefers `openspec/` if it already exists
+ * (shared with OpenSpec CLI), otherwise uses `loomkit/`.
+ */
 export function getLoomKitDir(): string {
-  return join(getProjectRoot(), 'loomkit');
+  const root = getProjectRoot();
+  const openspecDir = join(root, 'openspec');
+  if (existsSync(openspecDir) && statSync(openspecDir).isDirectory()) {
+    return openspecDir;
+  }
+  return join(root, 'loomkit');
 }
 
 export function getChangesDir(): string {

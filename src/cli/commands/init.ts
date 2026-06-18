@@ -35,11 +35,12 @@ rules:
 
 export async function cmdInit(): Promise<void> {
   const loomkitDir = getLoomKitDir();
+  const wsName = loomkitDir.endsWith('openspec') ? 'openspec/' : 'loomkit/';
 
   if (existsSync(loomkitDir)) {
     const entries = readdirSync(loomkitDir).filter(f => !f.startsWith('.') && f !== '.gitkeep');
     if (entries.length > 0) {
-      console.error('⚠  loomkit/ already exists and is not empty. Use --force to overwrite.');
+      console.error(`⚠  ${wsName} already exists and is not empty. Use --force to overwrite.`);
       process.exit(1);
     }
   }
@@ -169,7 +170,7 @@ artifacts:
   writeFileSync(join(getSpecsDir(), '.gitkeep'), '');
   writeFileSync(join(getChangesDir(), '.gitkeep'), '');
 
-  console.log(`✓  Initialized LoomKit in ${loomkitDir}`);
+  console.log(`✓  Initialized LoomKit in ${wsName}`);
   console.log('  ├── config.yaml');
   console.log('  ├── schemas/');
   console.log('  ├── adapters/');

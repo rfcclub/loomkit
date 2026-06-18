@@ -1,6 +1,6 @@
 import { join } from 'path';
 import { existsSync, readFileSync, mkdirSync } from 'fs';
-import { getChangeDir, changeExists, writeFileSafe } from '../utils.js';
+import { getChangeDir, changeExists, writeFileSafe, readConfig } from '../utils.js';
 
 const DEFAULT_PROPOSAL = `## Why
 
@@ -46,12 +46,49 @@ const DEFAULT_SPEC = `## ADDED Requirements
 `;
 
 export function cmdSpec(name: string): void {
+  // Allow spec to add to an intent-only directory
   if (changeExists(name)) {
-    console.error(`✗  Change "${name}" already exists at ${getChangeDir(name)}`);
-    process.exit(1);
+    const changeDir = getChangeDir(name);
+    const intentPath = join(changeDir, 'intent.md');
+    const proposalPath = join(changeDir, 'proposal.md');
+    const hasOnlyIntent = existsSync(intentPath) && !existsSync(proposalPath);
+
+    if (!hasOnlyIntent) {
+      console.error(`✗  Change "${name}" already exists at ${getChangeDir(name)}`);
+      process.exit(1);
+    }
+    // Intent-only directory — proceed to add proposal + spec
+    addSpecFiles(changeDir, name);
+    return;
   }
 
   const changeDir = getChangeDir(name);
+
+  // Intent gate: check if intent.md exists
+  const intentPath = join(changeDir, 'intent.md');
+  const intentMissing = !existsSync(intentPath);
+
+  if (intentMissing) {
+    const config = readConfig();
+    const enforceIntent = config?.intent?.enforce === true;
+
+    if (enforceIntent) {
+      console.error(`✗  Intent gate: No intent.md found for "${name}".`);
+      console.error(`   Run: loomkit intent ${name}`);
+      console.error('   Or set intent.enforce: false in loomkit/config.yaml to skip.');
+      process.exit(1);
+    } else {
+      console.warn('⚠  Intent gate: No intent.md found. Spec may lack intent traceability.');
+      console.warn(`   Run: loomkit intent ${name}`);
+      console.warn('');
+    }
+  }
+
+  addSpecFiles(changeDir, name);
+}
+
+function addSpecFiles(changeDir: string, name: string): void {
+
   const specsDir = join(changeDir, 'specs', name);
 
   // Create directories
@@ -75,11 +112,13 @@ export function cmdSpec(name: string): void {
 }
 
 function findTemplate(name: string): string {
-  // Try schemas in loomkit/ first
-  const schemasDir = join(process.cwd(), 'loomkit', 'schemas', 'spec-driven', 'templates');
-  const templatePath = join(schemasDir, name);
-  if (existsSync(templatePath)) {
-    return readFileSync(templatePath, 'utf-8');
+  // Try schemas in workspace subdirectories (loomkit/ or openspec/)
+  for (const wsName of ['loomkit', 'openspec']) {
+    const schemasDir = join(process.cwd(), wsName, 'schemas', 'spec-driven', 'templates');
+    const templatePath = join(schemasDir, name);
+    if (existsSync(templatePath)) {
+      return readFileSync(templatePath, 'utf-8');
+    }
   }
 
   // Try builtin schemas

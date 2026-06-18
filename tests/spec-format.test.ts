@@ -78,11 +78,11 @@ The system SHALL issue a JWT token upon successful login.
 });
 
 describe('Spec Validator', () => {
-  it('fails on missing Purpose section', () => {
+  it('warns on missing Purpose section (warning, not error)', () => {
     const markdown = `# T\n\n## Requirements\n\n### Requirement: A\nThe system SHALL X.\n\n#### Scenario: S\n- **WHEN** x\n- **THEN** y = 1\n`;
     const result = validateSpec(markdown);
-    expect(result.valid).toBe(false);
-    expect(result.errors).toContainEqual(expect.stringContaining('Purpose'));
+    expect(result.valid).toBe(true); // Purpose is now a warning, not an error
+    expect(result.warnings).toContainEqual(expect.stringContaining('Purpose'));
   });
 
   it('fails on scenario without THEN', () => {

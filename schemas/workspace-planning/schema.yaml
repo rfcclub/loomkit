@@ -1,7 +1,17 @@
 name: workspace-planning
 version: 1
-description: Workspace planning workflow for cross-area changes
+description: Intent-guided workspace planning workflow for cross-area changes
 artifacts:
+  - id: intent
+    generates: intent.md
+    description: Capture the problem, desired outcome, non-goals, and constraints before writing spec
+    template: intent.md
+    instruction: |
+      Create the intent document for the workspace change. Separate the desired outcome from the proposed solution.
+      Include scope, non-goals, constraints, success criteria, risks, ambiguities, and spec seeds.
+      Status must be APPROVED before spec phase.
+    requires: []
+
   - id: proposal
     generates: proposal.md
     description: Shared workspace proposal with the product goal, scope, affected areas, and impact

@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from '
 import { getChangeDir, getSpecsDir, changeExists } from '../utils.js';
 import { parseDeltaSpec, parseSpec, mergeSpecs } from '../../spec/index.js';
 import { formatSpec } from '../../spec/format.js';
+import { validateSpec } from '../../spec/validator.js';
 export function cmdArchive(name, options) {
     if (!changeExists(name)) {
         console.error(`✗  Change "${name}" not found.`);
@@ -68,7 +69,7 @@ export function cmdArchive(name, options) {
         console.log(`  🏷  Tagged v${newVersion}`);
     }
 }
-export async function mergeSpecIntoLiving(name, changeDir, specsDir) {
+export function mergeSpecIntoLiving(name, changeDir, specsDir) {
     const specFile = join(changeDir, 'specs', name, 'spec.md');
     if (!existsSync(specFile))
         return;
@@ -85,7 +86,22 @@ export async function mergeSpecIntoLiving(name, changeDir, specsDir) {
         living = { title: name, purpose: '', requirements: [], warnings: [], schemaVersion: 1 };
     }
     const merged = mergeSpecs(living, delta);
+    // Pre-merge validation: validate the merged spec before writing
     const md = formatSpec(merged);
+    const validation = validateSpec(md);
+    if (!validation.valid) {
+        console.error('  ✗  Spec validation failed after merge:');
+        for (const err of validation.errors) {
+            console.error(`     - ${err}`);
+        }
+        throw new Error('Archive blocked: merged spec validation failed. Fix spec issues and re-run verify.');
+    }
+    if (validation.warnings.length > 0) {
+        console.log('  ⚠  Spec warnings:');
+        for (const warn of validation.warnings) {
+            console.log(`     - ${warn}`);
+        }
+    }
     writeFileSync(livingSpecFile, md, 'utf-8');
     console.log(`  📋 Updated living spec: ${livingSpecFile}`);
 }

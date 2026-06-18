@@ -1,7 +1,7 @@
 {
   "name": "@gotako/loomkit",
-  "version": "1.0.1",
-  "description": "Spec-Driven Design Framework with TDD Superpowers",
+  "version": "1.1.8",
+  "description": "Intent-guided spec-driven design framework with TDD superpowers — Intent → Spec → TDD → Trust",
   "type": "module",
   "main": "dist/index.js",
   "bin": {

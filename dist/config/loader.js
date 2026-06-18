@@ -5,9 +5,15 @@ const TddConfigSchema = z.object({
     coverageThreshold: z.number().int().min(0).max(100).default(100),
     command: z.string().optional(),
 });
+const IntentConfigSchema = z.object({
+    enforce: z.boolean().default(false),
+    require_approval_before_spec: z.boolean().default(false),
+    require_no_blocking_ambiguities: z.boolean().default(false),
+});
 const LoomKitConfigSchema = z.object({
     schema: z.enum(['spec-driven']).default('spec-driven'),
     tdd: TddConfigSchema.optional(),
+    intent: IntentConfigSchema.optional(),
     context: z.string().default(''),
     rules: z.record(z.string(), z.array(z.string())).default({}),
 });
