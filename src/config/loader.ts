@@ -7,14 +7,22 @@ const TddConfigSchema = z.object({
   command: z.string().optional(),
 });
 
+const IntentConfigSchema = z.object({
+  enforce: z.boolean().default(false),
+  require_approval_before_spec: z.boolean().default(false),
+  require_no_blocking_ambiguities: z.boolean().default(false),
+});
+
 const LoomKitConfigSchema = z.object({
   schema: z.enum(['spec-driven']).default('spec-driven'),
   tdd: TddConfigSchema.optional(),
+  intent: IntentConfigSchema.optional(),
   context: z.string().default(''),
   rules: z.record(z.string(), z.array(z.string())).default({}),
 });
 
 export type LoomKitConfig = z.infer<typeof LoomKitConfigSchema>;
+export type IntentConfig = z.infer<typeof IntentConfigSchema>;
 
 function substituteEnvVars(value: string): string {
   return value.replace(/\$\{(\w+)\}/g, (_, varName) => {

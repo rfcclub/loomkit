@@ -1,4 +1,8 @@
 export declare function getProjectRoot(): string;
+/**
+ * Returns the workspace directory. Prefers `openspec/` if it already exists
+ * (shared with OpenSpec CLI), otherwise uses `loomkit/`.
+ */
 export declare function getLoomKitDir(): string;
 export declare function getChangesDir(): string;
 export declare function getChangeDir(name: string): string;

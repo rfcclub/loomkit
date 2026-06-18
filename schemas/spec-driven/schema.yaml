@@ -1,7 +1,38 @@
 name: spec-driven
 version: 1
-description: Default OpenSpec workflow - proposal → specs → design → tasks
+description: Intent-guided spec-driven workflow — intent → proposal → specs → design → tasks
 artifacts:
+  - id: intent
+    generates: intent.md
+    description: Capture the problem, desired outcome, non-goals, and constraints before writing spec
+    template: intent.md
+    instruction: |
+      Create the intent document that separates the user's desired outcome from their proposed solution.
+
+      Sections:
+      - **Raw Request**: The original user request, verbatim.
+      - **Problem**: The actual problem to solve. Do not restate the proposed solution unless it is truly the problem.
+      - **Desired Outcome**: The observable outcome that should be true after this change.
+      - **Users / Actors**: Primary user and secondary systems or actors.
+      - **Current Context**: Relevant existing system behavior, files, modules, constraints.
+      - **Proposed Direction**: Likely solution direction, but not yet binding spec.
+      - **Scope**: What is included.
+      - **Non-Goals**: What is explicitly excluded.
+      - **Constraints**: Technical, product, security, migration, compatibility constraints.
+      - **Success Criteria**: Measurable or verifiable success conditions.
+      - **Risks**: Known risks and mitigations.
+      - **Ambiguities**: Blocking (must resolve before spec/design) and Non-Blocking (can proceed with assumption).
+      - **Assumptions**: Documented assumptions and why they are acceptable.
+      - **Spec Seeds**: Candidate requirements for the spec phase. Not binding.
+      - **Intent Approval**: Status (DRAFT | APPROVED | REJECTED), approved by, date.
+
+      IMPORTANT: Intent is NOT spec. It captures the WHY and WHAT OUTCOME, not the HOW.
+      The user may propose a solution — separate it from the actual problem.
+      Status must be APPROVED before spec phase (configurable via intent.enforce).
+
+      This is the foundation — spec, design, and tasks all trace back to intent.
+    requires: []
+
   - id: proposal
     generates: proposal.md
     description: Initial proposal document outlining the change

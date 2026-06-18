@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { cmdInit } from './commands/init.js';
+import { cmdIntent } from './commands/intent.js';
 import { cmdSpec } from './commands/spec.js';
 import { cmdDesign } from './commands/design.js';
 import { cmdPlan } from './commands/plan.js';
@@ -9,6 +10,7 @@ import { cmdArchive } from './commands/archive.js';
 import { cmdStatus } from './commands/status.js';
 import { cmdAdapt } from './commands/adapt.js';
 import { cmdPublish } from './commands/publish.js';
+import { cmdShow } from './commands/show.js';
 
 const command = process.argv[2];
 const args = process.argv.slice(3);
@@ -16,6 +18,10 @@ const args = process.argv.slice(3);
 switch (command) {
   case 'init':
     cmdInit();
+    break;
+  case 'intent':
+    if (!args[0]) { console.error('Usage: loomkit intent <name>'); process.exit(1); }
+    cmdIntent(args[0]);
     break;
   case 'spec':
     if (!args[0]) { console.error('Usage: loomkit spec <name>'); process.exit(1); }
@@ -43,6 +49,9 @@ switch (command) {
     const dryRun = process.argv.includes('--dry-run');
     cmdPublish({ dryRun });
     break;
+  case 'show':
+    cmdShow(args[0] || undefined);
+    break;
   case 'status':
     cmdStatus();
     break;
@@ -69,9 +78,11 @@ Usage: loomkit <command> [options]
 
 Commands:
   init                    Scaffold loomkit/ directory
+  intent <name>           Create an intent artifact (problem, outcome, non-goals)
   spec <name>             Create a new change with proposal + spec
   design <name>           Add design.md to existing change
   plan <name>             Add tasks.md to existing change
+  show [name]             Show change details (all changes if no name)
   verify [name]           Run coverage gate (all changes if no name)
   archive <name>          Archive verified change
   publish [--dry-run]     Publish current version to npm

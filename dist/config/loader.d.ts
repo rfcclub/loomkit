@@ -1,4 +1,9 @@
 import { z } from 'zod';
+declare const IntentConfigSchema: z.ZodObject<{
+    enforce: z.ZodDefault<z.ZodBoolean>;
+    require_approval_before_spec: z.ZodDefault<z.ZodBoolean>;
+    require_no_blocking_ambiguities: z.ZodDefault<z.ZodBoolean>;
+}, z.core.$strip>;
 declare const LoomKitConfigSchema: z.ZodObject<{
     schema: z.ZodDefault<z.ZodEnum<{
         "spec-driven": "spec-driven";
@@ -15,9 +20,15 @@ declare const LoomKitConfigSchema: z.ZodObject<{
         coverageThreshold: z.ZodDefault<z.ZodNumber>;
         command: z.ZodOptional<z.ZodString>;
     }, z.core.$strip>>;
+    intent: z.ZodOptional<z.ZodObject<{
+        enforce: z.ZodDefault<z.ZodBoolean>;
+        require_approval_before_spec: z.ZodDefault<z.ZodBoolean>;
+        require_no_blocking_ambiguities: z.ZodDefault<z.ZodBoolean>;
+    }, z.core.$strip>>;
     context: z.ZodDefault<z.ZodString>;
     rules: z.ZodDefault<z.ZodRecord<z.ZodString, z.ZodArray<z.ZodString>>>;
 }, z.core.$strip>;
 export type LoomKitConfig = z.infer<typeof LoomKitConfigSchema>;
+export type IntentConfig = z.infer<typeof IntentConfigSchema>;
 export declare function loadConfig(yamlContent: string | null): LoomKitConfig;
 export {};

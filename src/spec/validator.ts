@@ -10,9 +10,9 @@ export function validateSpec(markdown: string): ValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  // Check Purpose section
+  // Check Purpose section (warning, not error — merged living specs may omit it)
   if (!markdown.includes('## Purpose')) {
-    errors.push('spec missing required section: Purpose');
+    warnings.push('spec missing recommended section: Purpose');
   }
 
   // Check for OR in scenarios
