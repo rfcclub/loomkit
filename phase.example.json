@@ -1,0 +1,113 @@
+{
+  "schema_version": "1.3",
+  "change_id": "openspec/changes/add-trust-engine",
+  "jira_key": "PCC-4821",
+
+  "// note": "phase.json is the source of truth the transition guard READS. The agent writes entries; the guard refuses to advance unless the entry validates. Nothing here is narrated by the agent — every hash is computed by a tool from on-disk bytes.",
+
+  "invariants": {
+    "// note": "These cannot be disabled by craft.yml. craft.yml may only tune severity thresholds and which OPTIONAL detectors run.",
+    "require_artifact_hashes": true,
+    "require_provenance_chain": true,
+    "require_verdict_before_finish": true
+  },
+
+  "current_phase": "apply",
+  "lifecycle": ["intent", "spec", "branch", "tdd", "apply", "gate-code", "verify", "finish", "archive"],
+
+  "phases": {
+    "intent": {
+      "status": "complete",
+      "completed_at": "2026-06-20T14:02:11Z",
+      "consumed": [],
+      "produced": [
+        { "path": "intent.md", "sha256": "i1a2b3...", "approval": "APPROVED" }
+      ],
+      "authorized_exit_by": {
+        "// note": "human approval is itself an artifact — exit is blocked until it exists",
+        "type": "human_signoff",
+        "marker": "intent.md:status=APPROVED",
+        "by": "engineer",
+        "at": "2026-06-20T14:05:00Z"
+      }
+    },
+
+    "spec": {
+      "status": "complete",
+      "completed_at": "2026-06-20T15:30:00Z",
+      "consumed": [
+        {
+          "path": "intent.md",
+          "sha256": "i1a2b3...",
+          "// note": "GUARD: this MUST equal intent.produced[].sha256. If intent.md changed after spec ran, the hashes diverge and spec is marked STALE — this is the provenance check that closes the 'apply before/around an unapproved spec' leak."
+        }
+      ],
+      "produced": [
+        { "path": "proposal.md", "sha256": "p9x8y7..." },
+        { "path": "design.md",   "sha256": "d5m4n3..." },
+        { "path": "tasks.md",    "sha256": "t2k1j0..." }
+      ],
+      "authorized_exit_by": { "type": "human_signoff", "marker": "proposal.md:review=APPROVED", "by": "engineer", "at": "2026-06-20T15:34:00Z" }
+    },
+
+    "branch": {
+      "status": "complete",
+      "consumed": [{ "path": "proposal.md", "sha256": "p9x8y7..." }],
+      "produced": [{ "type": "git_branch", "ref": "task/PCC-4821", "base_sha": "g0000aa" }],
+      "authorized_exit_by": { "type": "tool", "marker": "branch_created" }
+    },
+
+    "tdd": {
+      "status": "complete",
+      "consumed": [{ "path": "tasks.md", "sha256": "t2k1j0..." }],
+      "produced": [{ "type": "test_skeleton", "path": "tests/test_trust_engine.py", "sha256": "ts7r6q..." }],
+      "authorized_exit_by": { "type": "tool", "marker": "test_runner_detected" }
+    },
+
+    "apply": {
+      "status": "in_progress",
+      "consumed": [
+        { "path": "tasks.md", "sha256": "t2k1j0...",
+          "// note": "GUARD: must equal spec.produced tasks.md hash. Catches a tasks.md hand-edited after spec sign-off." }
+      ],
+      "produced": [
+        {
+          "type": "diff",
+          "// note": "the diff hash is the SUBJECT every downstream verdict must bind to. Computed by `git diff` piped to sha256 — never asserted by the agent.",
+          "diff_sha256": null,
+          "traceability": { "path": ".traceability.yaml", "sha256": null }
+        }
+      ],
+      "authorized_exit_by": null
+    },
+
+    "gate-code": {
+      "status": "pending",
+      "// note": "1.3 makes this MANDATORY. The guard will not let finish run without a gate-code entry whose verdict.bound_diff_sha256 == apply.produced.diff_sha256.",
+      "consumed": [],
+      "produced": [
+        {
+          "type": "verdict",
+          "path": ".orchestrator/gate/code/<timestamp>/verdict.json",
+          "verdict_sha256": null,
+          "bound_diff_sha256": null,
+          "// note": "bound_diff_sha256 is the whole point. A PASS bound to an old diff cannot authorize finishing a new one — closes skipped-gate AND stale-verdict together.",
+          "evidence_bound": {
+            "// note": "verdict embeds (or hashes) its evidence so it can't be claimed without a captured test run",
+            "test_log_sha256": null,
+            "build_log_sha256": null
+          }
+        }
+      ],
+      "authorized_exit_by": null
+    },
+
+    "verify": { "status": "pending", "consumed": [], "produced": [], "authorized_exit_by": null },
+    "finish": {
+      "status": "pending",
+      "// note": "GUARD at finish entry: (1) gate-code.produced.verdict resolves to PASS, (2) verdict.bound_diff_sha256 == current `git diff` sha256, (3) verify.status == complete. All three or BLOCK.",
+      "consumed": [], "produced": [], "authorized_exit_by": null
+    },
+    "archive": { "status": "pending", "consumed": [], "produced": [], "authorized_exit_by": null }
+  }
+}
