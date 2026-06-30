@@ -28,6 +28,9 @@ export function formatSpec(spec: SpecTree): string {
       parts.push(`#### Scenario: ${sc.title}`);
       parts.push('');
 
+      for (const given of sc.given) {
+        parts.push(`- **GIVEN** ${given}`);
+      }
       for (const when of sc.when) {
         parts.push(`- **WHEN** ${when}`);
       }

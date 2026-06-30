@@ -1,0 +1,61 @@
+TRANSITION GUARD  (Craft 1.3) — runs before EVERY phase command, no exceptions
+================================================================================
+The guard is the harness. phase.json is just its memory. The agent cannot
+advance the lifecycle by narration; it can only ask the guard, and the guard
+recomputes hashes from disk every time.
+
+  can_enter(target_phase):
+      prev = phase_before(target_phase, lifecycle)
+
+      # 1. PRIOR PHASE COMPLETE
+      if prev and phases[prev].status != "complete":
+          BLOCK("cannot enter {target}: {prev} not complete")
+
+      # 2. PROVENANCE — every consumed artifact must match what its
+      #    producer recorded. This is the chain. A break anywhere = STALE.
+      for art in phases[target].consumed:
+          recorded = find_producer_hash(art.path)        # search upstream phases
+          on_disk  = sha256_of(art.path)                 # recompute NOW
+          if art.sha256 != recorded:  BLOCK("provenance broken: {art.path} not derived from approved upstream")
+          if art.sha256 != on_disk:   BLOCK("stale: {art.path} changed on disk after this phase ran")
+
+      # 3. HUMAN GATES are artifacts, not vibes
+      if phases[prev].authorized_exit_by.type == "human_signoff":
+          if not signoff_marker_present(phases[prev].authorized_exit_by.marker):
+              BLOCK("{prev} requires human sign-off; marker absent")
+
+      # 4. THE finish GATE — closes skipped-gate + stale-verdict + drift at once
+      if target == "finish":
+          v = resolve_verdict("gate-code")               # must EXIST
+          if v is None:                  BLOCK("no gate-code verdict — gate was skipped")
+          if v.verdict != "PASS":        BLOCK("gate-code verdict is {v.verdict}, not PASS")
+          current_diff = sha256_of(git_diff())           # recompute NOW
+          if v.bound_diff_sha256 != current_diff:
+              BLOCK("verdict bound to {v.bound_diff_sha256}, code is now {current_diff} — stale PASS")
+          if phases["verify"].status != "complete":
+              BLOCK("verify not complete")
+
+      return ALLOW
+
+
+KEY PROPERTIES
+--------------
+- Hashes are recomputed from disk on every check. A recorded hash that no
+  longer matches the file is the signal — the agent cannot fake current state.
+- The verdict→diff binding (step 4) means a PASS is only ever valid for the
+  exact bytes it was computed against. Editing code after PASS invalidates it
+  automatically; no separate "did you re-run the gate" check needed.
+- invariants{} in phase.json are read by the guard, NOT by craft.yml.
+  craft.yml can raise/lower severity thresholds and toggle OPTIONAL detectors.
+  It cannot set require_verdict_before_finish=false. That line is what makes
+  the gate non-optional — the difference between a harness and a suggestion.
+
+WHAT THIS DOES NOT YET DO (next, after this lands)
+--------------------------------------------------
+- Producer/checker isolation: gate-code detectors should run blind to the
+  producer's context. The guard enforces the verdict EXISTS and BINDS; it does
+  not yet enforce the verdict was produced in a clean context.
+- Resumability test: kill a run mid-apply, restart, confirm the guard
+  reconstructs current_phase purely from phase.json + disk hashes.
+- craft:learn feedback: log every BLOCK and every human override of a verdict,
+  so the ≥85 PASS threshold can be calibrated against real outcomes.

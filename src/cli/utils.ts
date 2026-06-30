@@ -132,6 +132,22 @@ export function listChanges(): string[] {
   );
 }
 
+export function findChangeSpecFiles(changeDir: string, name: string): string[] {
+  const legacySpecFile = join(changeDir, 'spec.md');
+  if (existsSync(legacySpecFile)) return [legacySpecFile];
+
+  const namedSpecFile = join(changeDir, 'specs', name, 'spec.md');
+  if (existsSync(namedSpecFile)) return [namedSpecFile];
+
+  const specsDir = join(changeDir, 'specs');
+  if (!existsSync(specsDir) || !statSync(specsDir).isDirectory()) return [];
+
+  return readdirSync(specsDir)
+    .map(entry => join(specsDir, entry, 'spec.md'))
+    .filter(path => existsSync(path))
+    .sort();
+}
+
 export function copyDir(src: string, dest: string): void {
   const entries = readdirSync(src, { withFileTypes: true });
   mkdirSync(dest, { recursive: true });

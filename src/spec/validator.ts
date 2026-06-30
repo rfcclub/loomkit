@@ -15,9 +15,10 @@ export function validateSpec(markdown: string): ValidationResult {
     warnings.push('spec missing recommended section: Purpose');
   }
 
-  // Check for OR in scenarios
+  // Check for OR in scenarios (both bold and plain format)
   const orMatch = markdown.match(/^- \*\*(WHEN|THEN)\*\*.*\bOR\b/gm);
-  if (orMatch) {
+  const orPlainMatch = markdown.match(/^- (WHEN|THEN)\b.*\bOR\b/gm);
+  if (orMatch || orPlainMatch) {
     errors.push('OR not supported in scenarios, split into separate scenarios');
   }
 

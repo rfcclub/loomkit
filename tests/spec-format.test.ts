@@ -70,8 +70,69 @@ The system SHALL issue a JWT token upon successful login.
     expect(spec.requirements[0].scenarios[1].id).toBe('user-authentication-invalid-credentials');
   });
 
+  it('parses scenario with GIVEN/WHEN/THEN (bold format)', () => {
+    const markdown = `# T\n## P\nx\n\n## Requirements\n\n### Requirement: A\nSystem SHALL work.\n\n#### Scenario: With given\n- **GIVEN** user is authenticated\n- **WHEN** user clicks submit\n- **THEN** response.status = 200\n`;
+
+    const spec = parseSpec(markdown);
+    const scenario = spec.requirements[0].scenarios[0];
+    expect(scenario.given).toHaveLength(1);
+    expect(scenario.given[0]).toBe('user is authenticated');
+    expect(scenario.when).toHaveLength(1);
+    expect(scenario.then).toHaveLength(1);
+  });
+
+  it('parses scenario with GIVEN/WHEN/THEN (plain OpenSpec format)', () => {
+    const markdown = `# T\n## P\nx\n\n## Requirements\n\n### Requirement: A\nSystem SHALL work.\n\n#### Scenario: With given\n- GIVEN a user with valid credentials\n- WHEN the user submits login form\n- THEN a JWT token is returned\n- AND the user is redirected to dashboard\n`;
+
+    const spec = parseSpec(markdown);
+    const scenario = spec.requirements[0].scenarios[0];
+    expect(scenario.given).toHaveLength(1);
+    expect(scenario.given[0]).toBe('a user with valid credentials');
+    expect(scenario.when).toHaveLength(1);
+    expect(scenario.when[0]).toBe('the user submits login form');
+    expect(scenario.then).toHaveLength(2);
+    expect(scenario.then[0].text).toBe('a JWT token is returned');
+    expect(scenario.then[1].text).toBe('the user is redirected to dashboard');
+  });
+
+  it('parses plain WHEN/THEN (no bold markers)', () => {
+    const markdown = `# T\n## P\nx\n\n## Requirements\n\n### Requirement: A\nSystem SHALL work.\n\n#### Scenario: Plain\n- WHEN user logs in\n- THEN response.status = 200\n`;
+
+    const spec = parseSpec(markdown);
+    const scenario = spec.requirements[0].scenarios[0];
+    expect(scenario.when).toHaveLength(1);
+    expect(scenario.when[0]).toBe('user logs in');
+    expect(scenario.then).toHaveLength(1);
+  });
+
+  it('parses GIVEN with AND following GIVEN', () => {
+    const markdown = `# T\n## P\nx\n\n## Requirements\n\n### Requirement: A\nSystem SHALL work.\n\n#### Scenario: Given chain\n- **GIVEN** user is logged in\n- **AND** user has admin role\n- **WHEN** user accesses admin panel\n- **THEN** access granted\n`;
+
+    const spec = parseSpec(markdown);
+    const scenario = spec.requirements[0].scenarios[0];
+    expect(scenario.given).toHaveLength(2);
+    expect(scenario.given[0]).toBe('user is logged in');
+    expect(scenario.given[1]).toBe('user has admin role');
+    expect(scenario.when).toHaveLength(1);
+    expect(scenario.then).toHaveLength(1);
+  });
+
   it('supports schema_version field', () => {
-    const markdown = `schema_version: 1\n\n# T\n## P\nx\n\n## Requirements\n\n### Requirement: A\nThe system SHALL X.\n\n#### Scenario: S\n- **WHEN** x\n- **THEN** y = 1\n`;
+    const markdown = `schema_version: 1
+
+# T
+## P
+x
+
+## Requirements
+
+### Requirement: A
+The system SHALL X.
+
+#### Scenario: S
+- **WHEN** x
+- **THEN** y = 1
+`;
     const spec = parseSpec(markdown);
     expect(spec.schemaVersion).toBe(1);
   });
@@ -92,8 +153,15 @@ describe('Spec Validator', () => {
     expect(result.errors).toContainEqual(expect.stringContaining('THEN'));
   });
 
-  it('fails on OR in scenario', () => {
+  it('fails on OR in scenario (bold format)', () => {
     const markdown = `# T\n## P\nx\n\n## Requirements\n\n### Requirement: A\nThe system SHALL X.\n\n#### Scenario: S\n- **WHEN** x OR y\n- **THEN** z = 1\n`;
+    const result = validateSpec(markdown);
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContainEqual(expect.stringContaining('OR'));
+  });
+
+  it('fails on OR in scenario (plain format)', () => {
+    const markdown = `# T\n## P\nx\n\n## Requirements\n\n### Requirement: A\nThe system SHALL X.\n\n#### Scenario: S\n- WHEN x OR y\n- THEN z = 1\n`;
     const result = validateSpec(markdown);
     expect(result.valid).toBe(false);
     expect(result.errors).toContainEqual(expect.stringContaining('OR'));

@@ -3,6 +3,7 @@ import { parseAssertion } from './assertion.js';
 export interface Scenario {
   id: string;
   title: string;
+  given: string[];
   when: string[];
   then: { text: string; assertion: ReturnType<typeof parseAssertion> }[];
 }
@@ -91,30 +92,40 @@ export function parseSpec(markdown: string): SpecTree {
       const scTitle = scPart.split('\n')[0].trim();
       const scBody = scPart.split('\n').slice(1).join('\n');
 
+      const given: string[] = [];
       const when: string[] = [];
       const then: Scenario['then'] = [];
 
       const lines = scBody.split('\n');
       for (const line of lines) {
         const trimmed = line.trim();
-        if (trimmed.startsWith('- **WHEN**')) {
-          when.push(trimmed.replace(/^- \*\*WHEN\*\*\s*/, ''));
-        } else if (trimmed.startsWith('- **AND**')) {
-          // AND follows the last WHEN or THEN
-          const content = trimmed.replace(/^- \*\*AND\*\*\s*/, '');
+
+        // Bold format: - **GIVEN** / - **WHEN** / - **THEN** / - **AND**
+        // Plain format: - GIVEN / - WHEN / - THEN / - AND
+        if (trimmed.match(/^- \*\*GIVEN\*\*/) || trimmed.match(/^- GIVEN\b/)) {
+          const content = trimmed.replace(/^- \*\*GIVEN\*\*\s*/, '').replace(/^- GIVEN\s*/, '');
+          given.push(content);
+        } else if (trimmed.match(/^- \*\*WHEN\*\*/) || trimmed.match(/^- WHEN\b/)) {
+          const content = trimmed.replace(/^- \*\*WHEN\*\*\s*/, '').replace(/^- WHEN\s*/, '');
+          when.push(content);
+        } else if (trimmed.match(/^- \*\*AND\*\*/) || trimmed.match(/^- AND\b/)) {
+          const content = trimmed.replace(/^- \*\*AND\*\*\s*/, '').replace(/^- AND\s*/, '');
+          // AND follows GIVEN, WHEN, or THEN (whichever was last)
           if (then.length > 0) {
             then.push({ text: content, assertion: parseAssertion(content) });
-          } else {
+          } else if (when.length > 0) {
             when.push(content);
+          } else {
+            given.push(content);
           }
-        } else if (trimmed.startsWith('- **THEN**')) {
-          const content = trimmed.replace(/^- \*\*THEN\*\*\s*/, '');
+        } else if (trimmed.match(/^- \*\*THEN\*\*/) || trimmed.match(/^- THEN\b/)) {
+          const content = trimmed.replace(/^- \*\*THEN\*\*\s*/, '').replace(/^- THEN\s*/, '');
           then.push({ text: content, assertion: parseAssertion(content) });
         }
       }
 
       const id = slugify(`${reqTitle} ${scTitle}`);
-      scenarios.push({ id, title: scTitle, when, then });
+      scenarios.push({ id, title: scTitle, given, when, then });
       scenarioIndex++;
     }
 
