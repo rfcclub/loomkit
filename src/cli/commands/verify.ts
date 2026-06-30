@@ -1,8 +1,8 @@
-import { join } from 'path';
+import { join, basename, dirname } from 'path';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
-import { getChangeDir, getSpecsDir, changeExists, listChanges } from '../utils.js';
+import { getChangeDir, changeExists, listChanges, findChangeSpecFiles } from '../utils.js';
 import { parseSpec } from '../../spec/parser.js';
-import { TraceabilityMap, calculateCoverage } from '../../tdd/traceability.js';
+import { calculateCoverage } from '../../tdd/traceability.js';
 import { parse as parseYaml } from 'yaml';
 
 export function cmdVerify(name?: string): void {
@@ -26,25 +26,26 @@ export function cmdVerify(name?: string): void {
 function verifyChange(name: string): void {
   const changeDir = getChangeDir(name);
 
-  const specDir = join(changeDir, 'specs', name);
-  const specFile = join(specDir, 'spec.md');
-
-  if (!existsSync(specFile)) {
+  const specFiles = findChangeSpecFiles(changeDir, name);
+  if (specFiles.length === 0) {
     console.log(`\n${name}: ⚠  No spec.md found, skipping`);
     return;
   }
 
-  const specContent = readFileSync(specFile, 'utf-8');
-  const spec = parseSpec(specContent);
-
   const mandatoryScenarios: string[] = [];
   const scenarioTestMap: Record<string, string> = {};
 
-  for (const req of spec.requirements) {
-    if (req.strength === 'SHALL' || req.strength === 'MUST') {
-      for (const sc of req.scenarios) {
-        mandatoryScenarios.push(sc.id);
-        scenarioTestMap[sc.id] = `tests/${name}/${sc.id}.test.ts`;
+  for (const specFile of specFiles) {
+    const specContent = readFileSync(specFile, 'utf-8');
+    const spec = parseSpec(specContent);
+    const capability = basename(dirname(specFile));
+
+    for (const req of spec.requirements) {
+      if (req.strength === 'SHALL' || req.strength === 'MUST') {
+        for (const sc of req.scenarios) {
+          mandatoryScenarios.push(sc.id);
+          scenarioTestMap[sc.id] = `tests/${name}/${capability}/${sc.id}.test.ts`;
+        }
       }
     }
   }
@@ -92,3 +93,5 @@ function verifyChange(name: string): void {
   }
   console.log(`  Verdict: ${result.passes ? 'PASS' : 'FAIL'}`);
 }
+
+export { findChangeSpecFiles };
