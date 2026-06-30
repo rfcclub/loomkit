@@ -1,6 +1,6 @@
-import { join } from 'path';
+import { basename, dirname, join } from 'path';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from 'fs';
-import { getChangeDir, getSpecsDir, changeExists } from '../utils.js';
+import { getChangeDir, getSpecsDir, changeExists, findChangeSpecFiles } from '../utils.js';
 import { parseDeltaSpec, parseSpec, mergeSpecs } from '../../spec/index.js';
 import { formatSpec } from '../../spec/format.js';
 import { validateSpec } from '../../spec/validator.js';
@@ -86,13 +86,26 @@ export function mergeSpecIntoLiving(
   changeDir: string,
   specsDir: string,
 ): void {
-  const specFile = join(changeDir, 'specs', name, 'spec.md');
-  if (!existsSync(specFile)) return;
+  const specFiles = findChangeSpecFiles(changeDir, name);
+  if (specFiles.length === 0) return;
 
+  for (const specFile of specFiles) {
+    const capability = basename(dirname(specFile)) === name
+      ? name
+      : basename(dirname(specFile));
+    mergeOneSpecIntoLiving(capability, specFile, specsDir);
+  }
+}
+
+function mergeOneSpecIntoLiving(
+  capability: string,
+  specFile: string,
+  specsDir: string,
+): void {
   const deltaContent = readFileSync(specFile, 'utf-8');
   const delta = parseDeltaSpec(deltaContent);
 
-  const livingSpecDir = join(specsDir, name);
+  const livingSpecDir = join(specsDir, capability);
   mkdirSync(livingSpecDir, { recursive: true });
   const livingSpecFile = join(livingSpecDir, 'spec.md');
 
@@ -100,7 +113,7 @@ export function mergeSpecIntoLiving(
   if (existsSync(livingSpecFile)) {
     living = parseSpec(readFileSync(livingSpecFile, 'utf-8'));
   } else {
-    living = { title: name, purpose: '', requirements: [], warnings: [], schemaVersion: 1 };
+    living = { title: capability, purpose: '', requirements: [], warnings: [], schemaVersion: 1 };
   }
 
   const merged = mergeSpecs(living, delta);
