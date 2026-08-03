@@ -1,81 +1,89 @@
 {
-  "schema_version": "1.3",
-  "change_id": "openspec/changes/add-trust-engine",
+  "schema_version": "1.4",
+  "change_id": "openspec/changes/checkout-promo",
   "jira_key": "PCC-4821",
 
-  "// note": "phase.json is the source of truth the transition guard READS. The agent writes entries; the guard refuses to advance unless the entry validates. Nothing here is narrated by the agent — every hash is computed by a tool from on-disk bytes.",
+  "// note": "phase.json là lifecycle NGOÀI CÙNG của cả change. Guard đọc nó và từ chối bước tiếp nếu artifact chưa validate. Không có gì ở đây do agent kể — mọi hash do tool tính từ bytes trên đĩa.",
+
+  "// note lifecycle_change_1.4": "BỎ 'spec' và 'tdd' khỏi lifecycle. Lý do: mô hình model-yếu đã chẻ chúng xuống tầng thấp hơn. spec KHÔNG còn là một phase/tài liệu riêng — nó nhúng thành behavior+acceptance trong mỗi task của plan.json. tdd KHÔNG còn là một phase riêng — nó là BƯỚC ĐẦU của vòng con mỗi task (viết test từ acceptance trước, rồi mới code). Cả hai sống ở tầng TASK, không phải tầng CHANGE.",
 
   "invariants": {
-    "// note": "These cannot be disabled by craft.yml. craft.yml may only tune severity thresholds and which OPTIONAL detectors run.",
+    "// note": "craft.yml KHÔNG tắt được mấy cái này. craft.yml chỉ chỉnh ngưỡng severity + bật/tắt detector optional.",
     "require_artifact_hashes": true,
     "require_provenance_chain": true,
     "require_verdict_before_finish": true
   },
 
   "current_phase": "apply",
-  "lifecycle": ["intent", "spec", "branch", "tdd", "apply", "gate-code", "verify", "finish", "archive"],
+  "lifecycle": ["intent", "plan", "branch", "apply", "gate-code", "verify", "finish", "archive"],
+
+  "// note where_spec_tdd_live": {
+    "spec": "tan vào plan.json: mỗi task mang behavior (1 câu) + acceptance (1 test). SpecCoverageValidator đọc thẳng từ đó, không cần proposal.md/design.md.",
+    "tdd": "tan vào vòng con mỗi task trong ô apply: task = [viết test từ acceptance → apply code (model yếu, improvement-loop) → gate-code]. TDD là bước 1 của vòng đó, ở tầng task."
+  },
 
   "phases": {
     "intent": {
       "status": "complete",
-      "completed_at": "2026-06-20T14:02:11Z",
+      "completed_at": "2026-07-06T14:02:11Z",
       "consumed": [],
       "produced": [
         { "path": "intent.md", "sha256": "i1a2b3...", "approval": "APPROVED" }
       ],
       "authorized_exit_by": {
-        "// note": "human approval is itself an artifact — exit is blocked until it exists",
+        "// note": "human approval tự nó là artifact — không exit được cho tới khi nó tồn tại",
         "type": "human_signoff",
         "marker": "intent.md:status=APPROVED",
-        "by": "engineer",
-        "at": "2026-06-20T14:05:00Z"
+        "by": "nam",
+        "at": "2026-07-06T14:05:00Z"
       }
     },
 
-    "spec": {
+    "plan": {
       "status": "complete",
-      "completed_at": "2026-06-20T15:30:00Z",
+      "// note": "phase này THAY THẾ phase 'spec' cũ. Nó sinh ra plan.json — danh sách task phẳng, mỗi task nhúng spec vi mô (behavior+acceptance). Đây là 'việc thông minh làm ở thượng nguồn': model mạnh hoặc người chẻ task ở đây, một lần.",
+      "completed_at": "2026-07-06T15:30:00Z",
       "consumed": [
         {
           "path": "intent.md",
           "sha256": "i1a2b3...",
-          "// note": "GUARD: this MUST equal intent.produced[].sha256. If intent.md changed after spec ran, the hashes diverge and spec is marked STALE — this is the provenance check that closes the 'apply before/around an unapproved spec' leak."
+          "// note": "GUARD: phải bằng intent.produced hash. Nếu intent.md đổi sau khi plan chạy, hash lệch → plan bị đánh STALE. Đây là provenance check."
         }
       ],
       "produced": [
-        { "path": "proposal.md", "sha256": "p9x8y7..." },
-        { "path": "design.md",   "sha256": "d5m4n3..." },
-        { "path": "tasks.md",    "sha256": "t2k1j0..." }
+        {
+          "path": "plan.json",
+          "sha256": "pl4n77...",
+          "// note": "plan.json giữ toàn bộ task + spec vi mô + hash chain giữa các task. KHÔNG còn proposal.md/design.md/tasks.md riêng."
+        }
       ],
-      "authorized_exit_by": { "type": "human_signoff", "marker": "proposal.md:review=APPROVED", "by": "engineer", "at": "2026-06-20T15:34:00Z" }
+      "authorized_exit_by": { "type": "human_signoff", "marker": "plan.json:traces_to.status=RESOLVED", "by": "nam", "at": "2026-07-06T15:34:00Z" }
     },
 
     "branch": {
       "status": "complete",
-      "consumed": [{ "path": "proposal.md", "sha256": "p9x8y7..." }],
+      "consumed": [{ "path": "plan.json", "sha256": "pl4n77..." }],
       "produced": [{ "type": "git_branch", "ref": "task/PCC-4821", "base_sha": "g0000aa" }],
       "authorized_exit_by": { "type": "tool", "marker": "branch_created" }
     },
 
-    "tdd": {
-      "status": "complete",
-      "consumed": [{ "path": "tasks.md", "sha256": "t2k1j0..." }],
-      "produced": [{ "type": "test_skeleton", "path": "tests/test_trust_engine.py", "sha256": "ts7r6q..." }],
-      "authorized_exit_by": { "type": "tool", "marker": "test_runner_detected" }
-    },
-
     "apply": {
       "status": "in_progress",
+      "// note": "ô apply = CHẠY HẾT plan.json. Bên trong nó, mỗi task chạy vòng con [TDD → apply → gate]. tdd sống Ở ĐÂY, tầng task, không phải một phase riêng bên ngoài. Chi tiết task nằm trong plan.json, không copy lên đây.",
       "consumed": [
-        { "path": "tasks.md", "sha256": "t2k1j0...",
-          "// note": "GUARD: must equal spec.produced tasks.md hash. Catches a tasks.md hand-edited after spec sign-off." }
+        {
+          "path": "plan.json",
+          "sha256": "pl4n77...",
+          "// note": "GUARD: phải bằng plan.produced hash. Bắt được plan.json bị sửa tay sau khi đã sign-off."
+        }
       ],
       "produced": [
         {
           "type": "diff",
-          "// note": "the diff hash is the SUBJECT every downstream verdict must bind to. Computed by `git diff` piped to sha256 — never asserted by the agent.",
+          "// note": "diff hash là SUBJECT mọi verdict hạ nguồn phải bind vào. Tính bằng git diff | sha256 — không do agent khai.",
           "diff_sha256": null,
-          "traceability": { "path": ".traceability.yaml", "sha256": null }
+          "// note plan_progress": "apply chỉ complete khi MỌI task trong plan.json ở status complete (guard đọc plan.json kiểm, không tin lời agent).",
+          "all_tasks_complete": false
         }
       ],
       "authorized_exit_by": null
@@ -83,7 +91,7 @@
 
     "gate-code": {
       "status": "pending",
-      "// note": "1.3 makes this MANDATORY. The guard will not let finish run without a gate-code entry whose verdict.bound_diff_sha256 == apply.produced.diff_sha256.",
+      "// note": "1.3+ BẮT BUỘC. Guard không cho finish chạy nếu thiếu gate-code entry mà verdict.bound_diff_sha256 == apply.produced.diff_sha256.",
       "consumed": [],
       "produced": [
         {
@@ -91,9 +99,8 @@
           "path": ".orchestrator/gate/code/<timestamp>/verdict.json",
           "verdict_sha256": null,
           "bound_diff_sha256": null,
-          "// note": "bound_diff_sha256 is the whole point. A PASS bound to an old diff cannot authorize finishing a new one — closes skipped-gate AND stale-verdict together.",
+          "// note": "bound_diff_sha256 là cả điểm mấu chốt. PASS bind vào diff cũ không authorize finish diff mới — bịt skipped-gate VÀ stale-verdict cùng lúc.",
           "evidence_bound": {
-            "// note": "verdict embeds (or hashes) its evidence so it can't be claimed without a captured test run",
             "test_log_sha256": null,
             "build_log_sha256": null
           }
@@ -102,11 +109,19 @@
       "authorized_exit_by": null
     },
 
-    "verify": { "status": "pending", "consumed": [], "produced": [], "authorized_exit_by": null },
+    "verify": {
+      "status": "pending",
+      "// note": "chạy full test suite của cả change, BLOCK nếu fail. Khác với gate-code (kiểm từng diff): verify là kiểm tổng thể trước finish.",
+      "consumed": [],
+      "produced": [],
+      "authorized_exit_by": null
+    },
     "finish": {
       "status": "pending",
-      "// note": "GUARD at finish entry: (1) gate-code.produced.verdict resolves to PASS, (2) verdict.bound_diff_sha256 == current `git diff` sha256, (3) verify.status == complete. All three or BLOCK.",
-      "consumed": [], "produced": [], "authorized_exit_by": null
+      "// note": "GUARD tại finish: (1) gate-code.verdict resolve ra PASS, (2) verdict.bound_diff_sha256 == git diff hiện tại, (3) verify.status == complete. Đủ ba hoặc BLOCK.",
+      "consumed": [],
+      "produced": [],
+      "authorized_exit_by": null
     },
     "archive": { "status": "pending", "consumed": [], "produced": [], "authorized_exit_by": null }
   }
