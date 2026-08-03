@@ -109,6 +109,40 @@ declare module 'seal-gate' {
 
   export function createReviewer(opts: { provider?: string; baseUrl?: string; apiKey?: string; model?: string; timeoutMs?: number }): unknown;
 
+  export interface MutationProbeOpts {
+    test_file: string;
+    run_command: [string, string[]];
+    workdir: string;
+    cap?: number;
+    _runTest?: (workdir: string, cmd: string, args: string[]) => Promise<{ exit_code: number; output: string }>;
+  }
+
+  export function checkTestPinsBehavior(
+    opts: MutationProbeOpts,
+  ): Promise<
+    | { pinned: true; survivors: string[] }
+    | { pinned: false; survivors: string[] }
+    | { skipped: true; reason: string }
+  >;
+
+  export function breedMutations(source: string): string[];
+
+  export const SpecCoverageValidator: {
+    validate(spec: string | null, testLog: string, diff: string): unknown;
+    validateWithProbe(
+      spec: string | null,
+      testLog: string,
+      diff: string,
+      probeOpts: Array<{
+        criterion: string;
+        test_file: string;
+        run_command: [string, string[]];
+        workdir: string;
+        _runTest?: (workdir: string, cmd: string, args: string[]) => Promise<{ exit_code: number; output: string }>;
+      }>,
+    ): Promise<unknown>;
+  };
+
   export const Seal: {
     withTrustMemory(memory: TrustMemory): void;
     withLLM(adapter: unknown): void;
