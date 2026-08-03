@@ -1,5 +1,5 @@
 export const LIFECYCLE = [
-  'intent', 'spec', 'branch', 'tdd', 'apply',
+  'intent', 'plan', 'branch', 'apply',
   'gate-code', 'verify', 'finish', 'archive', 'learn'
 ] as const
 
@@ -65,4 +65,54 @@ export interface SelfCheckArtifact {
   evidence: EvidenceReference[]
   known_limitations: string[]
   unresolved_assumptions: string[]
+}
+
+export interface TaskArtifact {
+  path: string
+  sha256: string | null
+}
+
+export interface DebugRefCost {
+  refuted_cycles: number
+  escalated: boolean
+}
+
+export interface DebugRef {
+  session: string
+  resolved_by_cycle: string
+  root_cause: string
+  cost: DebugRefCost
+}
+
+export type TaskStatus = 'pending' | 'in_progress' | 'complete'
+
+export interface PlanTask {
+  id: string
+  status: TaskStatus
+  behavior: string
+  acceptance: string
+  files: string[]
+  test: string
+  consumes: TaskArtifact[]
+  produces: TaskArtifact[]
+  debug_ref?: DebugRef
+}
+
+export interface PlanTraceRef {
+  target: string
+  status: 'RESOLVED' | 'PENDING'
+  resolved_by?: string
+  resolved_at?: string
+}
+
+export interface PlanEscalation {
+  max_improvement_iterations: number
+}
+
+export interface PlanJson {
+  schema_version: '1.0'
+  change_id: string
+  traces_to: PlanTraceRef
+  tasks: PlanTask[]
+  escalation: PlanEscalation
 }

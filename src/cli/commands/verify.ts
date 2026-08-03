@@ -4,8 +4,9 @@ import { getChangeDir, changeExists, listChanges, findChangeSpecFiles } from '..
 import { parseSpec } from '../../spec/parser.js';
 import { calculateCoverage } from '../../tdd/traceability.js';
 import { parse as parseYaml } from 'yaml';
+import { TransitionGuard } from '../../harness/transition-guard.js';
 
-export function cmdVerify(name?: string): void {
+export function cmdVerify(name?: string, opts: { skip?: boolean } = {}): void {
   const changes = name ? [name] : listChanges();
 
   if (changes.length === 0) {
@@ -19,12 +20,20 @@ export function cmdVerify(name?: string): void {
       continue;
     }
 
-    verifyChange(changeName);
+    verifyChange(changeName, opts.skip);
   }
 }
 
-function verifyChange(name: string): void {
+function verifyChange(name: string, skip = false): void {
   const changeDir = getChangeDir(name);
+
+  // State machine guard — degrades gracefully when phase.json absent
+  try {
+    new TransitionGuard(changeDir).canEnter('verify', skip);
+  } catch (e) {
+    console.error(`✗  ${name}: ${(e as Error).message}`);
+    return;
+  }
 
   const specFiles = findChangeSpecFiles(changeDir, name);
   if (specFiles.length === 0) {

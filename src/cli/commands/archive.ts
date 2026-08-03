@@ -1,9 +1,11 @@
 import { basename, dirname, join } from 'path';
-import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, readdirSync } from 'fs';
 import { getChangeDir, getSpecsDir, changeExists, findChangeSpecFiles } from '../utils.js';
 import { parseDeltaSpec, parseSpec, mergeSpecs } from '../../spec/index.js';
 import { formatSpec } from '../../spec/format.js';
 import { validateSpec } from '../../spec/validator.js';
+import { extractLessons, formatLessonsMarkdown, generatePolicyDiff } from '../../harness/learn-loop.js';
+import type { GateHistoryEntry } from '../../harness/learn-loop.js';
 
 export function cmdArchive(name: string, options: { force?: boolean; reason?: string }): void {
   if (!changeExists(name)) {
@@ -52,7 +54,10 @@ export function cmdArchive(name: string, options: { force?: boolean; reason?: st
     }
   }
 
-  // Step 3: Move change dir to archive/
+  // Step 3: Trigger learn loop from gate history (before dir is moved away)
+  triggerLearnLoop(name, changeDir);
+
+  // Step 4: Move change dir to archive/
   const archiveDir = join(specsDir, '..', 'archive');
   mkdirSync(archiveDir, { recursive: true });
 
@@ -79,6 +84,49 @@ export function cmdArchive(name: string, options: { force?: boolean; reason?: st
   if (newVersion) {
     console.log(`  🏷  Tagged v${newVersion}`);
   }
+}
+
+// Learn loop triggered at archive time: reads gate history, persists lessons +
+// a gate-policy diff candidate. auto_applied is always false — candidate rules
+// require human review before being applied to gate-policy.yml.
+function triggerLearnLoop(name: string, changeDir: string): void {
+  const verdictDir = join(changeDir, '.harness', 'gate-verdicts');
+  if (!existsSync(verdictDir)) {
+    console.log(`  ⚠  No gate history for "${name}" — learn loop skipped`);
+    return;
+  }
+
+  const history: GateHistoryEntry[] = [];
+  const files = readdirSync(verdictDir).filter(f => f.endsWith('.json')).sort();
+  for (const file of files) {
+    try {
+      const data = JSON.parse(readFileSync(join(verdictDir, file), 'utf-8'));
+      history.push({
+        verdict: data.verdict,
+        change: name,
+        issues: data.blocking_issues ?? [],
+        trust_score: data.trust_score,
+        timestamp: data.timestamp ?? file.replace('.json', ''),
+      });
+    } catch { /* skip corrupt file */ }
+  }
+
+  if (history.length === 0) {
+    console.log(`  ⚠  No gate history entries for "${name}" — learn loop skipped`);
+    return;
+  }
+
+  const lessons = extractLessons(history);
+  const lessonsDir = join(changeDir, '.harness');
+  mkdirSync(lessonsDir, { recursive: true });
+  writeFileSync(join(lessonsDir, 'lessons.md'), formatLessonsMarkdown(lessons), 'utf-8');
+
+  const policyDiff = generatePolicyDiff(lessons);
+  if (policyDiff) {
+    writeFileSync(join(lessonsDir, 'gate-policy.diff.yml'), policyDiff, 'utf-8');
+  }
+
+  console.log(`  📚 Learn loop: ${lessons.policy_candidates.length} policy candidate(s) written`);
 }
 
 export function mergeSpecIntoLiving(

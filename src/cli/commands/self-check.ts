@@ -1,7 +1,7 @@
 import { join } from 'path'
 import { existsSync, writeFileSync, readFileSync } from 'fs'
 import { getChangeDir, changeExists } from '../utils.js'
-import { createSelfCheckTemplate } from '../../harness/self-check.ts'
+import { createSelfCheckTemplate } from '../../harness/self-check.js'
 
 export function cmdSelfCheck(name: string): void {
   if (!changeExists(name)) {

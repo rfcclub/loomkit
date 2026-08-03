@@ -16,6 +16,7 @@ import { cmdGateCode } from './commands/gate-code.js';
 import { cmdCraft } from './commands/craft.js';
 import { cmdGatePipeline } from './commands/gate-pipeline.js';
 import { cmdLearn } from './commands/learn.js';
+import { cmdPlanJson } from './commands/plan-json.js';
 
 const command = process.argv[2];
 const args = process.argv.slice(3);
@@ -42,7 +43,7 @@ switch (command) {
     cmdPlan(args[0]);
     break;
   case 'verify':
-    cmdVerify(args[0] || undefined);
+    cmdVerify(args[0] || undefined, { skip: process.argv.includes('--skip-state-check') });
     break;
   case 'archive':
     if (!args[0]) { console.error('Usage: loomkit archive <name> [--force --reason="..."]'); process.exit(1); }
@@ -70,8 +71,12 @@ switch (command) {
     cmdSelfCheck(args[0]);
     break;
   case 'gate-code':
-    if (!args[0]) { console.error('Usage: loomkit gate-code <name> [--skip-state-check]'); process.exit(1); }
-    await cmdGateCode(args[0], { skip: process.argv.includes('--skip-state-check') });
+    if (!args[0]) { console.error('Usage: loomkit gate-code <name> [--skip-state-check] [--llm [provider]]'); process.exit(1); }
+    {
+      const llmIdx = args.indexOf('--llm')
+      const llm = llmIdx >= 0 ? (args[llmIdx + 1] && !args[llmIdx + 1].startsWith('-') ? args[llmIdx + 1] : '') : undefined
+      await cmdGateCode(args[0], { skip: process.argv.includes('--skip-state-check'), llm })
+    }
     break;
   case 'craft':
     if (!args[0]) { console.error('Usage: loomkit craft <name>'); process.exit(1); }
@@ -83,6 +88,10 @@ switch (command) {
   case 'learn':
     if (!args[0]) { console.error('Usage: loomkit learn <name>'); process.exit(1); }
     cmdLearn(args[0]);
+    break;
+  case 'plan-json':
+    if (!args[0] || !args[1]) { console.error('Usage: loomkit plan-json <init|add|start|complete|finish|show> <name> [options]'); process.exit(1); }
+    await cmdPlanJson(args[0], args[1], args.slice(2));
     break;
   case 'help':
   case '--help':
@@ -116,10 +125,19 @@ Workflow commands:
 
 Harness commands:
   self-check <name>       Scaffold self-check.md (claims, evidence, limitations)
-  gate-code <name>        Run SEAL gate on current diff [--skip-state-check]
+  gate-code <name>        Run SEAL gate on current diff [--skip-state-check] [--llm [provider]]
   craft <name>            Show craft review verdict (maintainability)
   gate-pipeline           Aggregate all change verdicts → SHIP/HOLD/ESCALATE
   learn <name>            Extract lessons from gate history
+  plan-json <action> <name> [options]
+                          Weak-model task list, nested inside phase.json's apply phase
+                          (init|add|start|complete|finish|show)
+                          init:     --trace <INTENT-ID> --resolved-by <name>
+                          add:      --id --behavior --acceptance --files --test [--consumes]
+                          start:    <task-id> [--skip-state-check]
+                          complete: <task-id> --test-cmd "<cmd>" [--debug-session --debug-cycle --root-cause] [--escalated]
+                          finish:   closes phase.json's "apply" phase once all tasks are complete
+                          show:     (no options)
 
 Other:
   publish [--dry-run]     Publish current version to npm

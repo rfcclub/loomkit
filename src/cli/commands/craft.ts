@@ -1,7 +1,7 @@
 import { join } from 'path'
 import { existsSync, readFileSync } from 'fs'
 import { getChangeDir, changeExists } from '../utils.js'
-import { parseCraftVerdict, CRAFT_PROMPT } from '../../harness/craft-review.ts'
+import { parseCraftVerdict, CRAFT_PROMPT } from '../../harness/craft-review.js'
 
 export function cmdCraft(name: string): void {
   if (!changeExists(name)) {

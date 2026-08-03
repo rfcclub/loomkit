@@ -1,8 +1,8 @@
 import { join } from 'path'
 import { existsSync, readFileSync, readdirSync, writeFileSync, mkdirSync } from 'fs'
 import { getChangeDir, changeExists } from '../utils.js'
-import { extractLessons, formatLessonsMarkdown, generatePolicyDiff } from '../../harness/learn-loop.ts'
-import type { GateHistoryEntry } from '../../harness/learn-loop.ts'
+import { extractLessons, formatLessonsMarkdown, generatePolicyDiff } from '../../harness/learn-loop.js'
+import type { GateHistoryEntry } from '../../harness/learn-loop.js'
 
 export function cmdLearn(name: string): void {
   if (!changeExists(name)) {

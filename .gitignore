@@ -1,2 +1,7 @@
 node_modules/
 dist/
+
+# LoomKit harness derived artifacts — regenerable, keep out of git
+openspec/changes/**/.harness/gate-verdicts/
+openspec/changes/**/.harness/lessons.md
+openspec/changes/**/.harness/gate-policy.diff.yml

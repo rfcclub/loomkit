@@ -1,8 +1,8 @@
 import { join } from 'path'
 import { existsSync, readFileSync, readdirSync } from 'fs'
 import { listChanges, getChangeDir } from '../utils.js'
-import { runPipelineGate } from '../../harness/pipeline-gate.ts'
-import type { PipelineVerdictEntry } from '../../harness/pipeline-gate.ts'
+import { runPipelineGate } from '../../harness/pipeline-gate.js'
+import type { PipelineVerdictEntry } from '../../harness/pipeline-gate.js'
 
 export function cmdGatePipeline(): void {
   const changes = listChanges()

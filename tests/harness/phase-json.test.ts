@@ -52,10 +52,10 @@ describe('phase-json', () => {
     createPhaseJson(tmpDir, 'x')
     const consumed = [{ path: 'a.md', sha256: 'abc' }]
     const produced = [{ path: 'b.md', sha256: 'def' }]
-    recordPhaseComplete(tmpDir, 'spec', consumed, produced, {})
+    recordPhaseComplete(tmpDir, 'plan', consumed, produced, {})
     const pj = readPhaseJson(tmpDir)
-    expect(pj.phases['spec'].consumed).toEqual(consumed)
-    expect(pj.phases['spec'].produced).toEqual(produced)
+    expect(pj.phases['plan'].consumed).toEqual(consumed)
+    expect(pj.phases['plan'].produced).toEqual(produced)
   })
 
   it('recordGateVerdict stores gate verdict in phase.json', () => {
