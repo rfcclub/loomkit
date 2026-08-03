@@ -4,6 +4,7 @@ import { join, resolve } from 'path'
 import { execFileSync } from 'child_process'
 import { parseSelfCheck } from './self-check.js'
 import { readPhaseJson, recordGateVerdict, sha256String } from './phase-json.js'
+import { readPlanJson } from './plan-json.js'
 import { TransitionGuard } from './transition-guard.js'
 import type { GateVerdict, VerdictEntry } from './types.js'
 
@@ -109,6 +110,10 @@ export async function runGateCode(opts: {
     writeFileSync(trustMemoryPath, JSON.stringify(trustMemory.toJSON(), null, 2))
   }
 
+  // Level 2b — mutation-probe each plan task's test to confirm it pins its behavior.
+  // Unpinned tests (mutation survived) fold a SPEC_UNTESTED advisory + trust drop into the result.
+  const resultWithProbe = await probePlanTasks(sealResult, opts.changeDir)
+
   // Build verdict entry for phase.json
   const testRef = selfCheck.evidence.find(e => e.command?.includes('test'))
   const verdictEntry: VerdictEntry = {
@@ -123,7 +128,7 @@ export async function runGateCode(opts: {
   // Write verdict file
   const verdictDir = join(opts.changeDir, '.harness', 'gate-verdicts')
   mkdirSync(verdictDir, { recursive: true })
-  writeFileSync(join(verdictDir, `${Date.now()}.json`), JSON.stringify({ ...sealResult, ...verdictEntry }, null, 2))
+  writeFileSync(join(verdictDir, `${Date.now()}.json`), JSON.stringify({ ...resultWithProbe.result, ...verdictEntry }, null, 2))
 
   // Update phase.json
   try {
@@ -141,13 +146,91 @@ export async function runGateCode(opts: {
   }
 
   return {
-    verdict: sealResult.verdict,
-    trust_score: sealResult.trust_score,
+    verdict: resultWithProbe.result.verdict,
+    trust_score: resultWithProbe.result.trust_score,
     bound_diff_sha256: diffSha256,
-    blocking_issues: sealResult.blocking_issues,
-    next_action: sealResult.next_action,
-    advisory_notes: sealResult.advisory_notes,
+    blocking_issues: resultWithProbe.result.blocking_issues,
+    next_action: resultWithProbe.result.next_action,
+    advisory_notes: resultWithProbe.result.advisory_notes,
     llm_hint: llmHint,
+  }
+}
+
+/**
+ * Level 2b mutation-probe integration. Reads plan.json (if present), and for each task that
+ * carries a `test`, runs the mutation probe to confirm the test actually pins its behavior.
+ * Unpinned tests fold a SPEC_UNTESTED advisory + a small trust drop into the result.
+ */
+async function probePlanTasks<T extends { advisory_notes?: string[]; trust_score: number }>(
+  result: T,
+  changeDir: string,
+): Promise<{ result: T; probed: boolean }> {
+  const planPath = join(changeDir, 'plan.json')
+  if (!existsSync(planPath)) {
+    return { result, probed: false }
+  }
+
+  let plan: ReturnType<typeof readPlanJson>
+  try {
+    plan = readPlanJson(changeDir)
+  } catch {
+    return { result, probed: false }
+  }
+
+  const testTasks = plan.tasks.filter(t => t.test && (t.status === 'complete' || t.status === 'in_progress'))
+  if (testTasks.length === 0) {
+    return { result, probed: false }
+  }
+
+  let checkTestPinsBehavior: (opts: {
+    test_file: string
+    run_command: [string, string[]]
+    workdir: string
+  }) => Promise<
+    { pinned: true; survivors: string[] } | { pinned: false; survivors: string[] } | { skipped: true; reason: string }
+  >
+  try {
+    ({ checkTestPinsBehavior } = await import('seal-gate'))
+  } catch {
+    return { result, probed: false } // seal-gate <0.5 lacks it
+  }
+  if (typeof checkTestPinsBehavior !== 'function') return { result, probed: false }
+
+  const advisory = [...(result.advisory_notes ?? [])]
+  let trustDrop = 0
+
+  for (const task of testTasks) {
+    const testFile = resolve(join(changeDir, '..', task.test))
+    if (!existsSync(testFile)) {
+      advisory.push(`mutation-probe: ${task.id} — test file not found: ${task.test}`)
+      continue
+    }
+    let outcome: Awaited<ReturnType<typeof checkTestPinsBehavior>>
+    try {
+      outcome = await checkTestPinsBehavior({
+        test_file: testFile,
+        run_command: ['bun', ['test', testFile]],
+        workdir: resolve(join(changeDir, '..')),
+      })
+    } catch {
+      continue
+    }
+    if ('skipped' in outcome && outcome.skipped) continue
+    if ('pinned' in outcome && outcome.pinned === false) {
+      advisory.push(`mutation-probe: ${task.id} — test does NOT pin its behavior (SPEC_UNTESTED); ${outcome.survivors.length} survivor(s)`)
+      trustDrop += 3
+    }
+  }
+
+  if (advisory.length === 0 && trustDrop === 0) return { result, probed: true }
+
+  return {
+    result: {
+      ...result,
+      advisory_notes: advisory,
+      trust_score: Math.max(0, result.trust_score - trustDrop),
+    },
+    probed: true,
   }
 }
 

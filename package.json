@@ -26,6 +26,6 @@
   "license": "ISC",
   "dependencies": {
     "@gotako/hammerhead-debug": "file:../hammerhead-debug",
-    "seal-gate": ">=0.4.0"
+    "seal-gate": "file:../seal-gate"
   }
 }
