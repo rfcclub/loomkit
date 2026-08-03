@@ -186,6 +186,7 @@ async function probePlanTasks<T extends { advisory_notes?: string[]; trust_score
     test_file: string
     run_command: [string, string[]]
     workdir: string
+    cap?: number
   }) => Promise<
     { pinned: true; survivors: string[] } | { pinned: false; survivors: string[] } | { skipped: true; reason: string }
   >
@@ -211,6 +212,7 @@ async function probePlanTasks<T extends { advisory_notes?: string[]; trust_score
         test_file: testFile,
         run_command: ['bun', ['test', testFile]],
         workdir: resolve(join(changeDir, '..')),
+        cap: 1, // pinned/unpinned is binary — one survivor is already proof, stop probing
       })
     } catch {
       continue
