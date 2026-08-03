@@ -2,8 +2,8 @@ import { createHash } from 'crypto'
 import { existsSync, readFileSync } from 'fs'
 import { join, resolve } from 'path'
 import { execFileSync } from 'child_process'
-import { readPhaseJson, sha256File, LIFECYCLE } from './phase-json.ts'
-import type { Phase, PhaseJson } from './types.ts'
+import { readPhaseJson, sha256File, LIFECYCLE } from './phase-json.js'
+import type { Phase, PhaseJson } from './types.js'
 
 export class TransitionGuard {
   constructor(private changeDir: string) {}

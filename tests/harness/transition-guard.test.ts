@@ -20,7 +20,7 @@ describe('TransitionGuard', () => {
   it('canEnter succeeds with skip=true regardless of state', () => {
     const guard = new TransitionGuard(tmpDir)
     // Should not throw when skipping state check
-    expect(() => guard.canEnter('spec', true)).not.toThrow()
+    expect(() => guard.canEnter('plan', true)).not.toThrow()
   })
 
   it('canEnter in degraded mode (no phase.json) emits warning, does not throw', () => {
@@ -42,16 +42,16 @@ describe('TransitionGuard', () => {
     expect(() => guard.canEnter('intent', false)).not.toThrow()
   })
 
-  it('canEnter spec fails when intent is pending', () => {
+  it('canEnter plan fails when intent is pending', () => {
     createPhaseJson(tmpDir, 'test-change')
     const guard = new TransitionGuard(tmpDir)
-    expect(() => guard.canEnter('spec', false)).toThrow(/intent.*not complete|prior phase/i)
+    expect(() => guard.canEnter('plan', false)).toThrow(/intent.*not complete|prior phase/i)
   })
 
-  it('canEnter spec succeeds when intent is done', () => {
+  it('canEnter plan succeeds when intent is done', () => {
     createPhaseJson(tmpDir, 'test-change')
     recordPhaseComplete(tmpDir, 'intent', [], [], { marker: 'done' })
     const guard = new TransitionGuard(tmpDir)
-    expect(() => guard.canEnter('spec', false)).not.toThrow()
+    expect(() => guard.canEnter('plan', false)).not.toThrow()
   })
 })

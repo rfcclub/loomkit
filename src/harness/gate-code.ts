@@ -2,10 +2,10 @@ import { createHash } from 'crypto'
 import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 'fs'
 import { join, resolve } from 'path'
 import { execFileSync } from 'child_process'
-import { parseSelfCheck } from './self-check.ts'
-import { readPhaseJson, recordGateVerdict, sha256String } from './phase-json.ts'
-import { TransitionGuard } from './transition-guard.ts'
-import type { GateVerdict, VerdictEntry } from './types.ts'
+import { parseSelfCheck } from './self-check.js'
+import { readPhaseJson, recordGateVerdict, sha256String } from './phase-json.js'
+import { TransitionGuard } from './transition-guard.js'
+import type { GateVerdict, VerdictEntry } from './types.js'
 
 export interface GateCodeResult {
   verdict: GateVerdict
@@ -14,12 +14,14 @@ export interface GateCodeResult {
   blocking_issues: Array<{ type: string; severity: string; evidence: string; rule_id?: string }>
   next_action: string
   advisory_notes?: string[]
+  llm_hint?: string
 }
 
 export async function runGateCode(opts: {
   changeDir: string
   skipStateCheck?: boolean
   sealReviewFn?: (input: unknown) => Promise<unknown>
+  llmProvider?: string
 }): Promise<GateCodeResult> {
   const guard = new TransitionGuard(opts.changeDir)
   guard.canEnter('gate-code', opts.skipStateCheck)
@@ -47,12 +49,33 @@ export async function runGateCode(opts: {
   const diffSha256 = sha256String(diffOutput)
 
   // Load SEAL and TrustMemory
-  const { Seal, TrustMemory } = await import('seal-gate')
+  const sealGate = await import('seal-gate')
+  const { Seal } = sealGate
+  const TrustMemory = (sealGate as Record<string, unknown>).TrustMemory as
+    | { fromJSON(data: Record<string, unknown[]>): { toJSON(): unknown }; new(): { toJSON(): unknown } }
+    | undefined
   const trustMemoryPath = join(opts.changeDir, '.harness', 'trust-memory.json')
-  const trustMemory = existsSync(trustMemoryPath)
-    ? TrustMemory.fromJSON(JSON.parse(readFileSync(trustMemoryPath, 'utf-8')))
-    : new TrustMemory()
-  Seal.withTrustMemory(trustMemory)
+  let trustMemory: { toJSON(): unknown } | null = null
+  if (TrustMemory) {
+    trustMemory = existsSync(trustMemoryPath)
+      ? TrustMemory.fromJSON(JSON.parse(readFileSync(trustMemoryPath, 'utf-8')))
+      : new TrustMemory()
+    Seal.withTrustMemory(trustMemory as never)
+  }
+
+  // Wire LLM reviewer if --llm was passed
+  let llmHint: string | undefined
+  if (opts.llmProvider !== undefined) {
+    try {
+      const { createReviewer, Seal: SealModule } = await import('seal-gate')
+      if (typeof createReviewer === 'function') {
+        const provider = opts.llmProvider || undefined  // empty string → auto-detect
+        SealModule.withLLM(createReviewer({ provider }) as never)
+      }
+    } catch {
+      // seal-gate < 0.4.0 doesn't export createReviewer — skip silently
+    }
+  }
 
   // Build SEAL evidence from self-check references
   const references = selfCheck.evidence
@@ -81,8 +104,10 @@ export async function runGateCode(opts: {
   }
 
   // Persist TrustMemory
-  mkdirSync(join(opts.changeDir, '.harness'), { recursive: true })
-  writeFileSync(trustMemoryPath, JSON.stringify(trustMemory.toJSON(), null, 2))
+  if (trustMemory) {
+    mkdirSync(join(opts.changeDir, '.harness'), { recursive: true })
+    writeFileSync(trustMemoryPath, JSON.stringify(trustMemory.toJSON(), null, 2))
+  }
 
   // Build verdict entry for phase.json
   const testRef = selfCheck.evidence.find(e => e.command?.includes('test'))
@@ -107,6 +132,14 @@ export async function runGateCode(opts: {
     // phase.json may not exist in degraded mode
   }
 
+  // Detect LLM hint from assumptions
+  if (opts.llmProvider !== undefined) {
+    const assumptions = (sealResult as Record<string, unknown>).assumptions_detected as string[] | undefined
+    if (assumptions?.some(a => typeof a === 'string' && a.includes('L2') && (a.includes('not reviewed') || a.includes('error')))) {
+      llmHint = '💡 Tip: Set an API key env var (MINIMAX_PLAN_KEY, FIREWORKS_API_KEY, GEMINI_API_KEY, etc.) to enable LLM review.'
+    }
+  }
+
   return {
     verdict: sealResult.verdict,
     trust_score: sealResult.trust_score,
@@ -114,6 +147,7 @@ export async function runGateCode(opts: {
     blocking_issues: sealResult.blocking_issues,
     next_action: sealResult.next_action,
     advisory_notes: sealResult.advisory_notes,
+    llm_hint: llmHint,
   }
 }
 

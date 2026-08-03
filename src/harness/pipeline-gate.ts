@@ -1,4 +1,4 @@
-import type { GateVerdict } from './types.ts'
+import type { GateVerdict } from './types.js'
 
 export type PipelineDecision = 'SHIP' | 'HOLD' | 'ESCALATE_TO_HUMAN'
 

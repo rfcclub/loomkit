@@ -1,8 +1,8 @@
 import { createHash } from 'crypto'
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs'
 import { join } from 'path'
-import type { Phase, PhaseEntry, PhaseJson, ArtifactRef, AuthorizedExit, VerdictEntry } from './types.ts'
-import { LIFECYCLE } from './types.ts'
+import type { Phase, PhaseEntry, PhaseJson, ArtifactRef, AuthorizedExit, VerdictEntry } from './types.js'
+import { LIFECYCLE } from './types.js'
 
 export { LIFECYCLE }
 export type { Phase, PhaseEntry, PhaseJson, ArtifactRef, AuthorizedExit, VerdictEntry }

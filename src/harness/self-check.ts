@@ -1,4 +1,4 @@
-import type { SelfCheckArtifact, EvidenceReference } from './types.ts'
+import type { SelfCheckArtifact, EvidenceReference } from './types.js'
 
 export function createSelfCheckTemplate(): string {
   return `# Self-Check

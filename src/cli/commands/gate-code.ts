@@ -1,7 +1,7 @@
 import { getChangeDir, changeExists } from '../utils.js'
-import { runGateCode } from '../../harness/gate-code.ts'
+import { runGateCode } from '../../harness/gate-code.js'
 
-export async function cmdGateCode(name: string, opts: { skip?: boolean } = {}): Promise<void> {
+export async function cmdGateCode(name: string, opts: { skip?: boolean; llm?: string } = {}): Promise<void> {
   if (!changeExists(name)) {
     console.error(`✗  Change "${name}" not found.`)
     process.exit(1)
@@ -11,7 +11,7 @@ export async function cmdGateCode(name: string, opts: { skip?: boolean } = {}): 
 
   console.log(`Running SEAL gate on "${name}"...`)
   try {
-    const result = await runGateCode({ changeDir, skipStateCheck: opts.skip })
+    const result = await runGateCode({ changeDir, skipStateCheck: opts.skip, llmProvider: opts.llm })
     const icon = result.verdict === 'PASS' || result.verdict === 'PASS_WITH_WARNINGS' ? '✓' : '✗'
     console.log(`\n${icon}  Verdict: ${result.verdict}`)
     console.log(`  Trust score: ${result.trust_score}`)
@@ -27,6 +27,10 @@ export async function cmdGateCode(name: string, opts: { skip?: boolean } = {}): 
       for (const issue of result.blocking_issues) {
         console.log(`    [${issue.severity}] ${issue.type}: ${issue.evidence}`)
       }
+    }
+
+    if (result.llm_hint) {
+      console.log(`\n  ${result.llm_hint}`)
     }
 
     console.log(`\n  Next: ${result.next_action}`)
