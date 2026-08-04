@@ -44,6 +44,7 @@ packages:
 
   '@gotako/hammerhead-debug@file:../hammerhead-debug':
     resolution: {directory: ../hammerhead-debug, type: directory}
+    hasBin: true
 
   '@jridgewell/sourcemap-codec@1.5.5':
     resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
