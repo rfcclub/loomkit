@@ -112,7 +112,11 @@ export async function runGateCode(opts: {
 
   // Level 2b — mutation-probe each plan task's test to confirm it pins its behavior.
   // Unpinned tests (mutation survived) fold a SPEC_UNTESTED advisory + trust drop into the result.
-  const resultWithProbe = await probePlanTasks(sealResult, opts.changeDir)
+  const resultWithProbe = await probePlanTasks(sealResult, opts.changeDir, {
+    content: specContent,
+    testLog: selfCheck.evidence.find(e => e.command?.includes('test'))?.output ?? '',
+    diffOutput,
+  })
 
   // Build verdict entry for phase.json
   const testRef = selfCheck.evidence.find(e => e.command?.includes('test'))
@@ -156,14 +160,57 @@ export async function runGateCode(opts: {
   }
 }
 
+type ProbeOutcome =
+  | { pinned: true; survivors: string[] }
+  | { pinned: false; survivors: string[] }
+  | { skipped: true; reason: string }
+
+type ProbeOpt = {
+  criterion: string
+  test_file: string
+  run_command: [string, string[]]
+  workdir: string
+  cap?: number
+}
+
+export type CheckTestPinsBehaviorFn = (opts: ProbeOpt) => Promise<ProbeOutcome>
+
+export type ValidateWithProbeFn = (
+  spec: string | null,
+  testLog: string,
+  diff: string,
+  probeOpts: ProbeOpt[],
+) => Promise<{
+  issues: Array<{ type: string; evidence: string; trust_deduction?: number }>
+  coverage: Array<{ criterion: string; pinned?: boolean }>
+}>
+
+export interface ProbePlanTasksDeps {
+  validateWithProbe?: ValidateWithProbeFn
+  checkTestPinsBehavior?: CheckTestPinsBehaviorFn
+}
+
 /**
  * Level 2b mutation-probe integration. Reads plan.json (if present), and for each task that
- * carries a `test`, runs the mutation probe to confirm the test actually pins its behavior.
- * Unpinned tests fold a SPEC_UNTESTED advisory + a small trust drop into the result.
+ * carries a `test`, confirms the test actually pins its behavior.
+ *
+ * Primary path: routes through `SpecCoverageValidator.validateWithProbe`, matching each task's
+ * `acceptance` text against the Level-1 spec-coverage criteria `Seal.review()` already found in
+ * spec.md — this reuses seal-gate's own per-criterion, capped trust-deduction policy
+ * (`min(8, 20 - already_deducted)`) instead of a second, separately-invented one.
+ *
+ * Fallback path: `task.acceptance`'s wording won't always substring-match spec.md's criterion
+ * text (they're two independently-written documents). A task whose criterion never matched any
+ * Level-1-covered entry would otherwise be silently skipped by `validateWithProbe` — worse than
+ * before this integration existed (no probe, no warning). Any such task is mutation-probed
+ * directly via `checkTestPinsBehavior` instead, with a flat trust deduction, so a text-matching
+ * miss never means silent no-op.
  */
-async function probePlanTasks<T extends { advisory_notes?: string[]; trust_score: number }>(
+export async function probePlanTasks<T extends { advisory_notes?: string[]; trust_score: number }>(
   result: T,
   changeDir: string,
+  spec: { content: string | null; testLog: string; diffOutput: string },
+  deps: ProbePlanTasksDeps = {},
 ): Promise<{ result: T; probed: boolean }> {
   const planPath = join(changeDir, 'plan.json')
   if (!existsSync(planPath)) {
@@ -182,49 +229,87 @@ async function probePlanTasks<T extends { advisory_notes?: string[]; trust_score
     return { result, probed: false }
   }
 
-  let checkTestPinsBehavior: (opts: {
-    test_file: string
-    run_command: [string, string[]]
-    workdir: string
-    cap?: number
-  }) => Promise<
-    { pinned: true; survivors: string[] } | { pinned: false; survivors: string[] } | { skipped: true; reason: string }
-  >
-  try {
-    ({ checkTestPinsBehavior } = await import('seal-gate'))
-  } catch {
-    return { result, probed: false } // seal-gate <0.5 lacks it
+  let validateWithProbe = deps.validateWithProbe
+  let checkTestPinsBehavior = deps.checkTestPinsBehavior
+  if (!validateWithProbe || !checkTestPinsBehavior) {
+    try {
+      const mod = (await import('seal-gate')) as {
+        SpecCoverageValidator?: { validateWithProbe: ValidateWithProbeFn }
+        checkTestPinsBehavior?: CheckTestPinsBehaviorFn
+      }
+      validateWithProbe ??= mod.SpecCoverageValidator?.validateWithProbe
+      checkTestPinsBehavior ??= mod.checkTestPinsBehavior
+    } catch {
+      return { result, probed: false } // seal-gate <0.5 lacks it
+    }
   }
-  if (typeof checkTestPinsBehavior !== 'function') return { result, probed: false }
+  if (!validateWithProbe || !checkTestPinsBehavior) return { result, probed: false }
 
   const advisory = [...(result.advisory_notes ?? [])]
   let trustDrop = 0
 
+  const probeOpts: Array<{ taskId: string; opt: ProbeOpt }> = []
   for (const task of testTasks) {
     const testFile = resolve(join(changeDir, '..', task.test))
     if (!existsSync(testFile)) {
       advisory.push(`mutation-probe: ${task.id} — test file not found: ${task.test}`)
       continue
     }
-    let outcome: Awaited<ReturnType<typeof checkTestPinsBehavior>>
-    try {
-      outcome = await checkTestPinsBehavior({
+    probeOpts.push({
+      taskId: task.id,
+      opt: {
+        criterion: task.acceptance,
         test_file: testFile,
         run_command: ['bun', ['test', testFile]],
         workdir: resolve(join(changeDir, '..')),
         cap: 1, // pinned/unpinned is binary — one survivor is already proof, stop probing
-      })
+      },
+    })
+  }
+  if (probeOpts.length === 0) {
+    return advisory.length === (result.advisory_notes?.length ?? 0)
+      ? { result, probed: false }
+      : { result: { ...result, advisory_notes: advisory }, probed: true }
+  }
+
+  const matchedTaskIds = new Set<string>()
+  try {
+    const probeResult = await validateWithProbe(spec.content, spec.testLog, spec.diffOutput, probeOpts.map(p => p.opt))
+    for (const issue of probeResult.issues) {
+      if (issue.type !== 'SPEC_UNTESTED') continue // Level-1 issues already counted by Seal.review() itself
+      advisory.push(`mutation-probe: ${issue.evidence}`)
+      trustDrop += issue.trust_deduction ?? 0
+    }
+    for (const { taskId, opt } of probeOpts) {
+      const entry = probeResult.coverage.find(
+        c => c.pinned !== undefined && c.criterion.includes(opt.criterion.slice(0, 100)),
+      )
+      if (entry) matchedTaskIds.add(taskId)
+    }
+  } catch {
+    // validateWithProbe itself failed — every task falls through to the direct fallback below.
+  }
+
+  // Fallback: any task whose criterion text never matched a Level-1 coverage entry (including
+  // every task, if validateWithProbe threw) is probed directly rather than silently dropped.
+  for (const { taskId, opt } of probeOpts) {
+    if (matchedTaskIds.has(taskId)) continue
+    let outcome: ProbeOutcome
+    try {
+      outcome = await checkTestPinsBehavior(opt)
     } catch {
       continue
     }
     if ('skipped' in outcome && outcome.skipped) continue
     if ('pinned' in outcome && outcome.pinned === false) {
-      advisory.push(`mutation-probe: ${task.id} — test does NOT pin its behavior (SPEC_UNTESTED); ${outcome.survivors.length} survivor(s)`)
+      advisory.push(
+        `mutation-probe (fallback — criterion unmatched in spec.md): ${taskId} — test does NOT pin its behavior (SPEC_UNTESTED); ${outcome.survivors.length} survivor(s)`,
+      )
       trustDrop += 3
     }
   }
 
-  if (advisory.length === 0 && trustDrop === 0) return { result, probed: true }
+  if (advisory.length === (result.advisory_notes?.length ?? 0) && trustDrop === 0) return { result, probed: true }
 
   return {
     result: {
