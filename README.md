@@ -2,6 +2,12 @@
 
 Intent-guided spec-driven design framework with TDD superpowers. For AI agents and humans.
 
+> **Two workflows.** This README covers the spec-driven flow below
+> (Intent → Spec → Design → Plan → TDD → Verify → Archive). For the
+> weak-model / hash-chained task pipeline — `plan.json`, `gate-code`,
+> mutation-probing, and hypothesis-gated debugging via
+> `hammerhead-debug` — see **[HARNESS.md](./HARNESS.md)**.
+
 ## Quick Start
 
 ```bash
