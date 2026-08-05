@@ -20,6 +20,12 @@ export interface GateCodeResult {
 
 export async function runGateCode(opts: {
   changeDir: string
+  /** Repo root that plan.json task.files/task.test paths are relative to. Defaults to
+   *  process.cwd() — matches PlanGuard's own projectRoot convention (plan-guard.ts),
+   *  not a fixed '..' walk from changeDir, which breaks for any changeDir deeper than
+   *  one level under the project root (e.g. openspec/changes/<name>/ or
+   *  loomkit/changes/<name>/ — both real, both two levels deep, not one). */
+  projectRoot?: string
   skipStateCheck?: boolean
   sealReviewFn?: (input: unknown) => Promise<unknown>
   llmProvider?: string
@@ -116,7 +122,7 @@ export async function runGateCode(opts: {
     content: specContent,
     testLog: selfCheck.evidence.find(e => e.command?.includes('test'))?.output ?? '',
     diffOutput,
-  })
+  }, {}, opts.projectRoot ?? process.cwd())
 
   // Build verdict entry for phase.json
   const testRef = selfCheck.evidence.find(e => e.command?.includes('test'))
@@ -211,6 +217,7 @@ export async function probePlanTasks<T extends { advisory_notes?: string[]; trus
   changeDir: string,
   spec: { content: string | null; testLog: string; diffOutput: string },
   deps: ProbePlanTasksDeps = {},
+  projectRoot: string = process.cwd(),
 ): Promise<{ result: T; probed: boolean }> {
   const planPath = join(changeDir, 'plan.json')
   if (!existsSync(planPath)) {
@@ -250,7 +257,7 @@ export async function probePlanTasks<T extends { advisory_notes?: string[]; trus
 
   const probeOpts: Array<{ taskId: string; opt: ProbeOpt }> = []
   for (const task of testTasks) {
-    const testFile = resolve(join(changeDir, '..', task.test))
+    const testFile = resolve(join(projectRoot, task.test))
     if (!existsSync(testFile)) {
       advisory.push(`mutation-probe: ${task.id} — test file not found: ${task.test}`)
       continue
@@ -261,7 +268,7 @@ export async function probePlanTasks<T extends { advisory_notes?: string[]; trus
         criterion: task.acceptance,
         test_file: testFile,
         run_command: ['bun', ['test', testFile]],
-        workdir: resolve(join(changeDir, '..')),
+        workdir: projectRoot,
         cap: 1, // pinned/unpinned is binary — one survivor is already proof, stop probing
       },
     })

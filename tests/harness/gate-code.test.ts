@@ -36,10 +36,15 @@ function writePlan(tasks: PlanTask[]): void {
 
 beforeEach(() => {
   tmpDir = join(tmpdir(), `loomkit-gate-code-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+  // Real changeDir shape is <projectRoot>/openspec/changes/<name> (or loomkit/changes/<name>) —
+  // TWO levels under projectRoot, not one. Caught live 2026-08-04 running `loomkit gate-code`
+  // for real (not mocked) against a real scratch project: the old code's `join(changeDir, '..')`
+  // resolved to <projectRoot>/openspec/changes instead of <projectRoot>, so every task.test file
+  // silently "not found." projectRoot is now explicit (matches PlanGuard's own convention), and
+  // the fixture is written there — not one level above changeDir — to actually exercise that.
   changeDir = join(tmpDir, 'openspec', 'changes', 'test-change')
   mkdirSync(changeDir, { recursive: true })
-  // probePlanTasks resolves task.test relative to changeDir/.. — write the dummy test file there.
-  writeFileSync(join(changeDir, '..', 'thing.test.ts'), 'test file placeholder')
+  writeFileSync(join(tmpDir, 'thing.test.ts'), 'test file placeholder')
 })
 
 afterEach(() => {
@@ -52,14 +57,14 @@ const specInfo = { content: '# spec', testLog: '', diffOutput: '' }
 describe('probePlanTasks', () => {
   it('no plan.json → not probed, result untouched', async () => {
     rmSync(join(changeDir, 'plan.json'), { force: true })
-    const { result, probed } = await probePlanTasks(baseResult, changeDir, specInfo)
+    const { result, probed } = await probePlanTasks(baseResult, changeDir, specInfo, {}, tmpDir)
     expect(probed).toBe(false)
     expect(result).toBe(baseResult)
   })
 
   it('no tasks with a test → not probed', async () => {
     writePlan([baseTask({ test: '' })])
-    const { probed } = await probePlanTasks(baseResult, changeDir, specInfo)
+    const { probed } = await probePlanTasks(baseResult, changeDir, specInfo, {}, tmpDir)
     expect(probed).toBe(false)
   })
 
@@ -77,7 +82,7 @@ describe('probePlanTasks', () => {
     const { result, probed } = await probePlanTasks(baseResult, changeDir, specInfo, {
       validateWithProbe,
       checkTestPinsBehavior,
-    })
+    }, tmpDir)
     expect(probed).toBe(true)
     expect(result.trust_score).toBe(95)
     expect(result.advisory_notes?.[0]).toContain('T1 — mutation survived')
@@ -98,7 +103,7 @@ describe('probePlanTasks', () => {
     const { result, probed } = await probePlanTasks(baseResult, changeDir, specInfo, {
       validateWithProbe,
       checkTestPinsBehavior,
-    })
+    }, tmpDir)
     expect(probed).toBe(true)
     expect(result.trust_score).toBe(97) // flat -3 fallback deduction
     expect(result.advisory_notes?.[0]).toContain('fallback')
@@ -114,7 +119,7 @@ describe('probePlanTasks', () => {
     const { probed } = await probePlanTasks(baseResult, changeDir, specInfo, {
       validateWithProbe,
       checkTestPinsBehavior,
-    })
+    }, tmpDir)
     expect(probed).toBe(true) // ran (via fallback), just found nothing wrong
   })
 
@@ -127,7 +132,7 @@ describe('probePlanTasks', () => {
     const { result, probed } = await probePlanTasks(baseResult, changeDir, specInfo, {
       validateWithProbe,
       checkTestPinsBehavior: async () => ({ pinned: true, survivors: [] }),
-    })
+    }, tmpDir)
     expect(probed).toBe(true)
     expect(result).toBe(baseResult) // unchanged — no advisory, no deduction
   })
@@ -140,7 +145,7 @@ describe('probePlanTasks', () => {
         called = true
         return { issues: [], coverage: [] }
       },
-    })
+    }, tmpDir)
     expect(probed).toBe(true)
     expect(called).toBe(false)
     expect(result.advisory_notes?.[0]).toContain('test file not found')
@@ -150,6 +155,25 @@ describe('probePlanTasks', () => {
     writePlan([baseTask({})])
     // No deps injected — falls through to the real dynamic import('seal-gate'), which may or
     // may not exist in the test environment. Either way this must never throw.
-    await expect(probePlanTasks(baseResult, changeDir, specInfo)).resolves.toBeDefined()
+    await expect(probePlanTasks(baseResult, changeDir, specInfo, {}, tmpDir)).resolves.toBeDefined()
+  })
+
+  it('regression: task.test resolves against projectRoot, not one level above changeDir', async () => {
+    // changeDir here is tmpDir/openspec/changes/test-change — two levels under tmpDir. The
+    // fixture is written at tmpDir/thing.test.ts (see beforeEach). Before the fix, the code
+    // resolved task.test against join(changeDir, '..') = tmpDir/openspec/changes — one level
+    // short — and every real task.test lookup failed with "test file not found", silently, even
+    // though the file genuinely existed. This is the exact failure `loomkit gate-code` produced
+    // live against a real scratch project, 2026-08-04.
+    writePlan([baseTask({})])
+    let sawTestFile: string | undefined
+    const validateWithProbe: ValidateWithProbeFn = async (_spec, _log, _diff, probeOpts) => {
+      sawTestFile = probeOpts[0]?.test_file
+      return { issues: [], coverage: [{ criterion: 'the thing works', pinned: true }] }
+    }
+    const { result, probed } = await probePlanTasks(baseResult, changeDir, specInfo, { validateWithProbe }, tmpDir)
+    expect(probed).toBe(true)
+    expect(sawTestFile).toBe(join(tmpDir, 'thing.test.ts'))
+    expect(result.advisory_notes ?? []).not.toContain(expect.stringContaining('test file not found'))
   })
 })
