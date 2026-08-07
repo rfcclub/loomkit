@@ -13,64 +13,148 @@ the intelligence goes **upstream**, into splitting work into small,
 provable tasks. Downstream, each task is mechanical: write a failing
 test from the acceptance criterion, make it pass, gate it, move on.
 
-Three packages work together:
+## The Four Pillars
 
-| Package | Role | Repo |
-|---|---|---|
-| **LoomKit** (this repo) | Lifecycle, plan tasks, gate orchestration | `~/work/loomkit` |
-| **seal-gate** | Verification: does the diff actually match the claim? | `~/work/seal-gate` |
-| **hammerhead-debug** | Hypothesis-gated debugging (DAP or log evidence) when a task gets stuck | `~/work/hammerhead-debug` |
+Four packages work together, named after fish, each pulled out of
+LoomKit as its own repo the moment it became a reusable concern rather
+than a LoomKit-specific implementation detail:
 
-None of the three know about each other's internals — LoomKit calls into
-seal-gate and hammerhead-debug as dependencies (`file:../seal-gate`,
-`file:../hammerhead-debug` in `package.json`), the same way any consumer
-would use a published package.
+| Package | Role | Repo | Status |
+|---|---|---|---|
+| **orca — LoomKit** (this repo) | Lifecycle, plan tasks, gate orchestration | `~/work/loomkit` | real, published (`@gotako/loomkit`) |
+| **seal — seal-gate** | Verification: does the diff actually match the claim? | `~/work/seal-gate` | real, published (`seal-gate`) |
+| **hammerhead — hammerhead-debug** | Hypothesis-gated debugging (DAP or log evidence) when a task gets stuck | `~/work/hammerhead-debug` | real, local (not yet published) |
+| **pilotfish** | Drives a model through `plan.json` tasks by role, retries on failure, escalates to hammerhead-debug instead of guessing | `~/work/pilotfish` | real, local (not yet published) |
 
-## Install / Build
+None of the four know about each other's internals — each consumes the
+others strictly as a dependency or a subprocess CLI, the same way any
+external consumer would:
 
-```bash
-# All three repos need to sit side by side (siblings), since LoomKit's
-# package.json references the other two via relative file: paths.
-cd ~/work/loomkit
-pnpm install
-pnpm build          # tsc — outputs dist/
-
-cd ~/work/hammerhead-debug
-npm install         # or pnpm install
-npx tsc             # outputs dist/
-
-cd ~/work/seal-gate
-npm install
-npx tsc             # (already built if you didn't touch it)
+```text
+                    ┌─────────────┐
+                    │  pilotfish   │  drives tasks by role, retries,
+                    │              │  escalates on exhaustion
+                    └──────┬───────┘
+                           │ reads plan.json via
+                           │ @gotako/loomkit's public API
+                           ▼
+    ┌─────────────────────────────────────────┐
+    │              orca — LoomKit               │  lifecycle, plan.json,
+    │                                             │  phase.json, gate-code
+    └───────┬─────────────────────────┬─────────┘
+            │ file: dependency         │ file: dependency
+            ▼                          ▼
+    ┌───────────────┐         ┌─────────────────────┐
+    │  seal — seal-gate│         │ hammerhead-debug     │  hypothesis-gated
+    │  quality gate,   │         │ (also invoked        │  debug loop,
+    │  mutation-probe  │         │  directly by a human  │  DAP or log
+    │                  │         │  or an agent, not      │  evidence
+    │                  │         │  only via loomkit)     │
+    └───────────────┘         └──────────┬─────────────┘
+                                          │ subprocess
+                                          ▼
+                                ┌───────────────────┐
+                                │ ~/repo/debug-skill  │  real DAP CLI
+                                │ (dap binary)         │  (external, Go)
+                                └───────────────────┘
 ```
 
-`loomkit` exposes a `bin` entry (`loomkit` → `dist/cli/index.js`), same
-for `hammerhead-debug`. Once built, you can either:
-- run them via their full path: `node ~/work/loomkit/dist/cli/index.js ...`
-- or, from inside a project that has them installed as a dependency:
-  `node_modules/.bin/loomkit ...`
+## Install From Source (all four)
 
-**Windows note (unverified — flagging honestly, not tested on Windows):**
-Both CLIs are plain Node.js scripts (`#!/usr/bin/env node` shebang) with
-no OS-specific code in the LoomKit/hammerhead-debug core paths — `node
-dist/cli/index.js ...` should work identically on Windows, macOS, and
-Linux. `pnpm`/`npm` generate a `.cmd` shim for the `bin` entries on
-Windows automatically. Things that are **not yet verified on Windows**:
-- The `file:../seal-gate` / `file:../hammerhead-debug` relative
-  dependency resolution — should work with pnpm/npm on Windows the same
-  way, but hasn't been tested there.
-- hammerhead-debug's **DAP probe kind** depends on an external Go binary
-  (`~/repo/debug-skill`'s `dap` CLI) — building that on Windows requires
-  Go installed, and the underlying debugger backends
-  (debugpy/dlv/js-debug/lldb-dap) have their own Windows setup steps
-  independent of this project. The **instrumentation/isolated_test/
-  trace_read** probe kinds have no such dependency and should work
-  identically on Windows.
-- Shell-invoked commands inside `plan-json complete --test-cmd "..."`
-  run via `sh -c` on the LoomKit side — on Windows this requires a POSIX
-  shell on `PATH` (Git Bash ships one; a plain `cmd.exe`/PowerShell-only
-  environment won't have `sh`). If commands fail with "sh not found,"
-  this is why.
+All four repos must sit **side by side** under the same parent directory
+(here, `~/work/`), since LoomKit's and pilotfish's `package.json` files
+reference the others via relative `file:` paths — there is no published
+npm resolution for `hammerhead-debug` or `pilotfish` yet.
+
+```bash
+mkdir -p ~/work && cd ~/work
+git clone <loomkit-repo-url> loomkit
+git clone <seal-gate-repo-url> seal-gate
+git clone <hammerhead-debug-repo-url> hammerhead-debug
+git clone <pilotfish-repo-url> pilotfish
+# (or: if you already have them, just make sure all four live directly
+#  under the same parent — ~/work/loomkit, ~/work/seal-gate, etc.)
+```
+
+Build order matters a little — `seal-gate` and `hammerhead-debug` have no
+dependency on the others, `loomkit` depends on both of them, `pilotfish`
+depends on `loomkit`:
+
+```bash
+# 1. seal-gate — no internal dependencies
+cd ~/work/seal-gate
+npm install
+npx tsc                       # outputs dist/
+
+# 2. hammerhead-debug — no internal dependencies
+cd ~/work/hammerhead-debug
+npm install
+npx tsc                       # outputs dist/
+
+# 3. loomkit — depends on both of the above via file:../seal-gate and
+#    file:../hammerhead-debug
+cd ~/work/loomkit
+pnpm install
+pnpm build                    # tsc — outputs dist/
+
+# 4. pilotfish — depends on loomkit via file:../loomkit
+cd ~/work/pilotfish
+npm install
+npx tsc                       # outputs dist/
+```
+
+Each package exposes a `bin` entry (`loomkit`, `hammerhead-debug`,
+`pilotfish`). Once built, invoke any of them either:
+- by full path: `node ~/work/loomkit/dist/cli/index.js ...`,
+  `node ~/work/hammerhead-debug/dist/cli.js ...`,
+  `node ~/work/pilotfish/dist/cli.js ...`
+- or, from inside a project that has them installed as a real
+  dependency: `node_modules/.bin/loomkit ...` etc.
+
+### One-time: install the hammerhead-debug skill
+
+So an agent (Claude Code, Codex) can invoke hammerhead-debug's
+hypothesis-gated workflow directly as a skill, instead of you pasting
+instructions manually every time:
+
+```bash
+node ~/work/hammerhead-debug/dist/cli.js install
+# copies skill/SKILL.md to:
+#   ~/.claude/skills/hammerhead-debug/SKILL.md
+#   ~/.codex/skills/hammerhead-debug/SKILL.md
+# --agent claude-code|codex   → install to only one agent
+# --project                    → install into ./.claude/skills/, ./.codex/skills/
+#                                 (relative to cwd) instead of your home directory
+```
+
+Verify it worked: the skill should show up as available in your next
+Claude Code / Codex session (or restart the current one). You can also
+just check the file exists: `cat ~/.claude/skills/hammerhead-debug/SKILL.md`.
+
+### Troubleshooting: "changes to a `file:` dependency aren't showing up"
+
+This bit us **four separate times** while building this pipeline, so it's
+worth documenting plainly rather than re-discovering it: **pnpm (and to a
+lesser extent npm) cache the resolved contents of a `file:` dependency**.
+Rebuilding the *source* repo (e.g. `hammerhead-debug`) is not enough —
+the *consuming* repo (`loomkit`) may keep serving a stale copy from its
+own `node_modules` even after you `pnpm install` again.
+
+What reliably works, in order of increasing force:
+1. Bump the dependency's own `version` field in its `package.json` (even
+   a trivial patch bump, e.g. `0.3.0` → `0.4.0`) — this changes the
+   resolved package identity, forcing a real refresh.
+2. Re-run `pnpm install` in the consumer.
+3. If that still doesn't pick it up: `pnpm remove <pkg>` then
+   `pnpm add <pkg>@file:../<path>` in the consumer — a full re-add, not
+   just a reinstall.
+4. `pnpm store prune` (clears pnpm's global content-addressable store) —
+   last resort; did **not** fix the issue on its own in testing here, the
+   version bump was what actually mattered.
+
+If `tsc` in the consuming repo suddenly says `Cannot find module
+'./some-new-file.js'` after you added a new export to a `file:`
+dependency and rebuilt it, this is almost certainly why.
 
 ## The Lifecycle
 
@@ -88,13 +172,14 @@ intent → plan → branch → apply → gate-code → verify → finish → arc
   `acceptance`, write code, run the test, mark complete. Each task
   produces a hash of its output files; later tasks that `--consumes`
   those files are blocked if the hash doesn't match (someone changed the
-  file since it was produced).
+  file since it was produced). This step can be done by hand, or driven
+  automatically by **pilotfish** (see below).
 - **gate-code**: run the SEAL quality gate against the current diff —
   produces a PASS/BLOCK verdict, a trust score, and (if `plan.json`
   tasks have tests) a mutation-probe pass confirming each test actually
   pins its behavior, not just asserts something true-by-construction.
 
-## Step-by-Step Walkthrough
+## Step-by-Step Walkthrough (manual)
 
 Run these from the root of any project (a real one, or a scratch
 directory — LoomKit doesn't care).
@@ -149,18 +234,8 @@ that hash is what later tasks' `--consumes` checks against.
 
 If a task's test won't go green and you don't understand why, don't
 guess — open a hypothesis-gated debug session (see
-`~/work/hammerhead-debug/skill/SKILL.md` for the full guide).
-
-One-time setup: install the skill so an agent (Claude Code, Codex) picks
-it up automatically as `/hammerhead-debug` instead of you having to paste
-the workflow manually each time:
-
-```bash
-node ~/work/hammerhead-debug/dist/cli.js install
-# installs to ~/.claude/skills/hammerhead-debug/ and ~/.codex/skills/hammerhead-debug/
-# --agent claude-code|codex to target one; --project to install into the
-# current project's .claude/skills//.codex/skills instead of your home dir
-```
+`~/work/hammerhead-debug/skill/SKILL.md` for the full guide, or just say
+"use hammerhead-debug" to an agent that has the skill installed):
 
 ```bash
 node ~/work/hammerhead-debug/dist/cli.js open \
@@ -211,14 +286,121 @@ loomkit verify my-feature
 loomkit archive my-feature
 ```
 
+## Automated Task Execution — pilotfish
+
+Steps 2-4 above can be automated for `apply`-role tasks: pilotfish reads
+the next task, calls a model you configure, writes the result, runs the
+test, retries with the failure fed back on error, and escalates (never
+guesses past a limit) when `plan.json`'s own
+`escalation.max_improvement_iterations` is exhausted.
+
+### Config: `pilotfish.config.json`
+
+Create this at your project root (or point `--config` at it elsewhere):
+
+```json
+{
+  "roles": {
+    "apply": "your-model-identifier"
+  },
+  "modelCommand": "your-command {model} --prompt-file {promptFile}",
+  "testCommandTemplate": "bun test {test}"
+}
+```
+
+- **`roles`** — maps a role name (currently only `apply` is driven by
+  the loop) to an opaque model identifier. The identifier's meaning is
+  entirely up to you and `modelCommand` — pilotfish never interprets it.
+- **`modelCommand`** — **required** to actually call a model. Pilotfish
+  does **not** hardcode or assume any specific provider/API (matches this
+  colony's cost-discipline convention of never defaulting to a paid
+  engine, and keeps pilotfish itself provider-agnostic). It writes the
+  call's full context (role, model, task, attempt number, previous
+  error if any) as JSON to a temp file, substitutes `{model}` and
+  `{promptFile}` into your command, runs it, and expects
+  `{"files": {"path/to/file": "full content", ...}}` printed to stdout.
+  Wire this to whatever you actually use — a CLI wrapper around a real
+  model API, a local model runner, anything that honors this contract.
+- **`testCommandTemplate`** — defaults to `"bun test {test}"`. `{test}`
+  is substituted with the task's `test` field from `plan.json`.
+
+### Running it
+
+```bash
+pilotfish run loomkit/changes/my-feature TASK-1
+# or: node ~/work/pilotfish/dist/cli.js run loomkit/changes/my-feature TASK-1
+#   [--project-root <dir>]   defaults to cwd
+#   [--config <path>]        defaults to <project-root>/pilotfish.config.json
+#   [--role <role>]          defaults to "apply"
+```
+
+Prints a JSON result:
+- `{"status": "already_complete"}` — task was already done, nothing ran.
+- `{"status": "complete", "attempts": N}` — a passing attempt was found
+  within the iteration limit. The task is **not** automatically marked
+  complete in `plan.json` — run `loomkit plan-json complete ...` next
+  (pilotfish deliberately doesn't duplicate loomkit's own, already-tested
+  completion logic — hashing files, updating `plan.json` — it only
+  proves a passing state was reached).
+- `{"status": "escalate", "attempts": N, "reason": "...", "escalation": {...}}`
+  — every attempt failed. Exit code 1. The CLI also prints the exact
+  `hammerhead-debug open` command to run next, using the real captured
+  failure as `--repro`'s evidence — **it does not auto-open a debug
+  session for you**; that's a decision the CLI hands back rather than
+  makes on your behalf.
+
+## Windows Support
+
+**Honest status: unverified end-to-end on a real Windows machine as of
+this writing.** What's believed to work vs. what's flagged as unknown:
+
+**Should work, no Windows-specific code exists:**
+- All four CLIs (`loomkit`, `seal-gate` internals, `hammerhead-debug`,
+  `pilotfish`) are plain Node.js (`#!/usr/bin/env node`), no OS-specific
+  branches in their core logic.
+- `pnpm`/`npm` generate a `.cmd` shim for `bin` entries on Windows
+  automatically — `loomkit`, `hammerhead-debug`, `pilotfish` should be
+  invocable the same way once installed.
+- `file:../...` relative dependency resolution — standard pnpm/npm
+  behavior, not expected to differ on Windows, but not tested there.
+- hammerhead-debug's `install` command uses Node's `path.join`
+  throughout (not string concatenation) — should produce correct
+  Windows-style paths (`\` separators) without any code change needed.
+
+**Confirmed friction points (real, from source inspection):**
+- `loomkit plan-json complete --test-cmd "..."` and pilotfish's default
+  test runner both shell out via `execFileSync('sh', ['-c', cmd], ...)`
+  — **requires a POSIX `sh` on `PATH`**. Git Bash (bundled with Git for
+  Windows) provides one; a bare `cmd.exe`/PowerShell-only environment
+  does not. If a command fails with "sh not found" or similar, this is
+  why — install Git for Windows (which most Windows dev setups already
+  have) or otherwise ensure `sh` resolves.
+- hammerhead-debug's **`dap` probe kind** (real breakpoints via the
+  Debug Adapter Protocol) depends on an external Go binary
+  (`~/repo/debug-skill`'s `dap` CLI) — building that requires Go
+  installed on Windows, and the underlying debugger backends
+  (debugpy/dlv/js-debug/lldb-dap) each have their own Windows setup
+  independent of this project. The **`instrumentation`/`isolated_test`/
+  `trace_read`** probe kinds have no such dependency and should work
+  identically on Windows — prefer those if `dap` setup is a blocker.
+- pilotfish's `modelCommand` is itself run via `sh -c` too — same POSIX
+  shell requirement applies to whatever real model-calling command you
+  configure.
+
+**If you hit something on Windows that contradicts the "should work"
+claims above, that's a real bug to report/fix, not an assumption to
+silently work around.**
+
 ## Escape Hatches
 
-Every state-checked command accepts `--skip-state-check` if `phase.json`
-enforcement gets in the way during manual testing/exploration — it warns
-loudly rather than failing silently, and is meant for development, not
-routine use.
+Every state-checked LoomKit command accepts `--skip-state-check` if
+`phase.json` enforcement gets in the way during manual testing/
+exploration — it warns loudly rather than failing silently, and is meant
+for development, not routine use.
 
 ## Reference: full command list
+
+### loomkit
 
 Run `loomkit help` for the live list. As of this writing:
 
@@ -228,13 +410,52 @@ Harness:   self-check, gate-code, craft, gate-pipeline, learn, plan-json
 Other:     publish, status, adapt, help
 ```
 
-`plan-json` sub-actions: `init`, `add`, `start`, `complete`, `finish`,
-`show`.
+`plan-json` sub-actions and their flags:
+
+```
+init:     --trace <INTENT-ID> --resolved-by <name>
+add:      --id <id> --behavior "..." --acceptance "..." --files a.ts[,b.ts] --test tests/a.test.ts [--consumes path1[,path2]]
+start:    <task-id> [--skip-state-check]
+complete: <task-id> --test-cmd "<cmd>" [--debug-session <id> --debug-cycle <id> --root-cause "..."] [--escalated]
+finish:   (no options) — closes phase.json's "apply" phase once all tasks are complete
+show:     (no options)
+```
+
+### hammerhead-debug
+
+```
+hammerhead-debug install [--agent claude-code|codex] [--project]
+hammerhead-debug open --symptom "<desc>" --repro "<cmd>" [--plan <p> --task <t>] [--dir <dir>]
+hammerhead-debug hypothesis <session-id> "<hypothesis>" --predict "<prediction>" [--dir <dir>]
+hammerhead-debug probe <session-id> --kind dap --break <path:line> --evaluate "<expr>" [--script <path>] [--dap-bin <path>] [--dir <dir>]
+hammerhead-debug probe <session-id> --kind instrumentation|isolated_test|trace_read --observation "<captured evidence>" [--dir <dir>]
+hammerhead-debug verdict <session-id> --result CONFIRMED|REFUTED [--reason "..."] [--dir <dir>]
+hammerhead-debug fix <session-id> --diff-sha256 <hash> [--dir <dir>]
+hammerhead-debug status <session-id> [--dir <dir>]
+hammerhead-debug check <session-id> [--dir <dir>]
+hammerhead-debug list [--dir <dir>]
+```
+
+`--dir` defaults to `.hammerhead-debug` relative to cwd — pass a
+loomkit changeDir (`loomkit/changes/<name>` or `openspec/changes/<name>`)
+to keep a debug session's evidence attached to the plan task it serves,
+so `loomkit plan-json complete --debug-session ... --debug-cycle ...` can
+find and verify it.
+
+### pilotfish
+
+```
+pilotfish run <changeDir> <task-id> [--project-root <dir>] [--config <path>] [--role <role>]
+```
 
 ## Design docs
 
 The reasoning behind this workflow (why weak-model sizing matters, how
-the hash-chain works, why mutation-probing exists) lives in
-`openspec/archive/loomkit-harness-complete-*/design.md` and
-`openspec/changes/gate-code-mutation-probe/{intent,design}.md`. Read
-those if you're modifying the harness itself, not just using it.
+the hash-chain works, why mutation-probing exists, why pilotfish stays
+provider-agnostic) lives in:
+- `openspec/archive/loomkit-harness-complete-*/design.md`
+- `openspec/changes/gate-code-mutation-probe/{intent,design}.md`
+- `~/work/hammerhead-debug/openspec/changes/{extract-and-dap,dap-probe-via-debug-skill,debug-loop-skill-layer}/{intent,design}.md`
+- `~/work/pilotfish/openspec/changes/{scaffold-role-orchestrator,role-orchestrator-loop}/intent.md`
+
+Read those if you're modifying the harness itself, not just using it.
