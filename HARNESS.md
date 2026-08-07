@@ -149,7 +149,18 @@ that hash is what later tasks' `--consumes` checks against.
 
 If a task's test won't go green and you don't understand why, don't
 guess — open a hypothesis-gated debug session (see
-`~/work/hammerhead-debug/skill/SKILL.md` for the full guide):
+`~/work/hammerhead-debug/skill/SKILL.md` for the full guide).
+
+One-time setup: install the skill so an agent (Claude Code, Codex) picks
+it up automatically as `/hammerhead-debug` instead of you having to paste
+the workflow manually each time:
+
+```bash
+node ~/work/hammerhead-debug/dist/cli.js install
+# installs to ~/.claude/skills/hammerhead-debug/ and ~/.codex/skills/hammerhead-debug/
+# --agent claude-code|codex to target one; --project to install into the
+# current project's .claude/skills//.codex/skills instead of your home dir
+```
 
 ```bash
 node ~/work/hammerhead-debug/dist/cli.js open \
