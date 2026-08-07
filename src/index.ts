@@ -20,3 +20,18 @@ export type { BrainstormOutput, BrainstormValidation } from './brainstorm/parser
 
 export { loadSchema } from './schema/loader.js';
 export type { WorkflowSchema, ArtifactDef } from './schema/loader.js';
+
+// Harness — plan.json (weak-model task list) read access for external consumers
+// (e.g. pilotfish), so they read the same file loomkit itself writes rather than
+// re-parsing plan.json independently.
+export { readPlanJson, findProducerTask } from './harness/plan-json.js';
+export type {
+  PlanJson,
+  PlanTask,
+  PlanTraceRef,
+  PlanEscalation,
+  TaskArtifact,
+  TaskStatus,
+  DebugRef,
+  DebugRefCost,
+} from './harness/types.js';
