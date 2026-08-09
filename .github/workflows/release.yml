@@ -1,22 +1,88 @@
-name: LoomKit Release
+name: Release
+
 on:
   push:
     branches: [master]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
 
 jobs:
   release:
-    if: "!contains(github.event.head_commit.message, '[skip release]')"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
           registry-url: https://registry.npmjs.org
-      - run: corepack enable pnpm
+
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      - run: npm publish
+      - run: pnpm test
+
+      - name: Read version + dependency versions from package.json
+        id: vars
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          HAMMERHEAD_VERSION=$(node -p "require('./package.json').dependencies['@gotako/hammerhead-debug'] || 'n/a'")
+          SEALGATE_VERSION=$(node -p "require('./package.json').dependencies['seal-gate'] || 'n/a'")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "hammerhead_version=$HAMMERHEAD_VERSION" >> "$GITHUB_OUTPUT"
+          echo "sealgate_version=$SEALGATE_VERSION" >> "$GITHUB_OUTPUT"
+          # Prerelease semver (e.g. 1.6.0-beta.1) publishes to npm's `beta`
+          # dist-tag and marks the GitHub Release as a prerelease — matches
+          # the manual beta releases already on both, so CI stays consistent
+          # with how they were done by hand.
+          if [[ "$VERSION" == *-* ]]; then
+            echo "npm_tag=beta" >> "$GITHUB_OUTPUT"
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "npm_tag=latest" >> "$GITHUB_OUTPUT"
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check whether this version was already released
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "v${{ steps.vars.outputs.version }}" --repo ${{ github.repository }} >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Skips cleanly (not a failure) on every push that doesn't bump the
+      # version — the old workflow tried `npm publish` unconditionally on
+      # every push to master and failed every single run as a result
+      # (10/10 failed before this fix, confirmed via `gh run list`).
+      - name: Publish to npm
+        if: steps.check.outputs.exists == 'false'
+        run: npm publish --tag ${{ steps.vars.outputs.npm_tag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Tag and create GitHub Release
+        if: steps.check.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git tag "v${{ steps.vars.outputs.version }}"
+          git push origin "v${{ steps.vars.outputs.version }}"
+          gh release create "v${{ steps.vars.outputs.version }}" \
+            --repo "${{ github.repository }}" \
+            --title "v${{ steps.vars.outputs.version }}" \
+            --notes "npm: \`npm install @gotako/loomkit@${{ steps.vars.outputs.version }}\` (dist-tag: \`${{ steps.vars.outputs.npm_tag }}\`)
+
+          Dependencies:
+          - \`@gotako/hammerhead-debug@${{ steps.vars.outputs.hammerhead_version }}\`
+          - \`seal-gate@${{ steps.vars.outputs.sealgate_version }}\`" \
+            $([ "${{ steps.vars.outputs.prerelease }}" = "true" ] && echo --prerelease)
