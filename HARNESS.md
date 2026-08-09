@@ -70,12 +70,33 @@ external consumer would:
                                 └───────────────────────┘
 ```
 
-## Install From Source (all four)
+## Install — Beta npm Channel (simplest, no sibling repos needed)
+
+```bash
+npm install @gotako/pilotfish@beta
+# or just the harness core, without pilotfish's automation:
+npm install @gotako/loomkit@beta
+```
+
+`@beta` resolves the **real** dependency chain from npm — no sibling
+repos, no `file:` paths, no manual clone order. `pilotfish@beta` pulls
+`@gotako/loomkit@beta`, which pulls `@gotako/hammerhead-debug@beta` and
+`seal-gate@beta`. Verified end-to-end (2026-08-09): built + tested every
+package against its real published dependency, not the local sibling
+clone, before publishing.
+
+⚠️ **This is genuinely beta** — expect breaking changes without notice,
+not a stability guarantee. The default (non-`@beta`) dist-tag installs
+only `@gotako/loomkit`'s own spec-driven workflow with no harness
+dependencies at all — that's the stable path if you don't need
+`gate-code`/`plan-json`/pilotfish/hammerhead-debug.
+
+## Install From Source (all four, for local development)
 
 All four repos must sit **side by side** under the same parent directory
-(here, `~/work/`), since LoomKit's and pilotfish's `package.json` files
-reference the others via relative `file:` paths — there is no published
-npm resolution for `hammerhead-debug` or `pilotfish` yet.
+(here, `~/work/`) **only if you're developing the harness itself and
+want `file:`-style live-edit resolution** — for just using the
+pipeline, the beta npm channel above is simpler and doesn't need this.
 
 ```bash
 mkdir -p ~/work && cd ~/work
@@ -90,6 +111,19 @@ git clone git@github.com:rfcclub/debug-skill.git
 # (or: if you already have them, just make sure they live directly
 #  under the same parent — ~/work/loomkit, ~/work/seal-gate, etc.)
 ```
+
+**Note (since the 2026-08-09 beta release):** `loomkit`'s and
+`pilotfish`'s committed `package.json` now point their
+`@gotako/hammerhead-debug`/`seal-gate`/`@gotako/loomkit` dependencies at
+real published `@beta` npm versions, not `file:../...` relative paths —
+that's what makes the npm channel above work without sibling clones. If
+you're editing `hammerhead-debug`/`seal-gate`/`loomkit` locally and want
+`loomkit`/`pilotfish` to pick up your *uncommitted* changes live
+(instead of whatever's on npm), re-point the dependency yourself:
+`pnpm add @gotako/hammerhead-debug@file:../hammerhead-debug` (or the
+equivalent for `seal-gate`/`loomkit`) — same escape hatch this section
+already documents in "Troubleshooting" below, just now needed by
+default rather than only when debugging a stale cache.
 
 Build order matters a little — `seal-gate` and `hammerhead-debug` have no
 dependency on the others, `loomkit` depends on both of them, `pilotfish`
