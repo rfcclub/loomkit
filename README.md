@@ -2,6 +2,16 @@
 
 Intent-guided spec-driven design framework with TDD superpowers. For AI agents and humans.
 
+> ⚠️ **`@beta` npm tag = the harness pipeline install.** `npm install
+> @gotako/loomkit` (default tag) gets the stable spec-driven workflow
+> only. `npm install @gotako/loomkit@beta` additionally pulls in real
+> `@gotako/hammerhead-debug@beta` and `seal-gate@beta` dependency
+> versions — the full four-package harness pipeline (see
+> [HARNESS.md](./HARNESS.md)) — without needing all repos cloned side
+> by side. **The `@beta` chain expects crashes, missing pieces, and
+> breaking changes without notice.** Not production-ready. Only use it
+> if you know what you're doing.
+
 > **Two workflows.** This README covers the spec-driven flow below
 > (Intent → Spec → Design → Plan → TDD → Verify → Archive). For the
 > weak-model / hash-chained task pipeline — `plan.json`, `gate-code`,
