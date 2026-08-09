@@ -25,33 +25,15 @@ flow above.** Three sibling tools plug in for the harder job — driving
 a weaker/cheaper model through small verified tasks without it losing
 the thread:
 
-```
-you write:  intent.md → plan.json (small tasks, each with a test)
-                              │
-                    ┌─────────┴─────────┐
-                    │     pilotfish       │  reads plan.json, calls a
-                    │                     │  model per task, retries on
-                    │                     │  a failing test, escalates
-                    │                     │  (never guesses) once retries
-                    │                     │  run out
-                    └─────────┬─────────┘
-                              │ every task's diff gets checked by
-                              ▼
-                    ┌─────────────────────┐
-                    │     seal-gate         │  "does this diff actually
-                    │                       │  match what it claims?" —
-                    │                       │  PASS / REVISE / BLOCK
-                    └─────────┬─────────────┘
-                              │ if a task is stuck and nobody
-                              │ knows why:
-                              ▼
-                    ┌─────────────────────────┐
-                    │   hammerhead-debug        │  no fix until a real
-                    │                           │  breakpoint/log line
-                    │                           │  CONFIRMS the cause —
-                    │                           │  never a guess
-                    └───────────────────────────┘
-```
+1. **You write** `intent.md` → `plan.json` (small tasks, each with a
+   test).
+2. **pilotfish** reads `plan.json`, calls a model per task, retries on
+   a failing test, escalates (never guesses) once retries run out.
+3. Every task's diff gets checked by **seal-gate**: "does this diff
+   actually match what it claims?" → `PASS` / `REVISE` / `BLOCK`.
+4. If a task is stuck and nobody knows why: **hammerhead-debug** — no
+   fix until a real breakpoint/log line CONFIRMS the cause, never a
+   guess.
 
 - **LoomKit** (this repo) — the lifecycle glue: `plan.json`,
   `phase.json`, `gate-code` orchestration. You'll always touch this
