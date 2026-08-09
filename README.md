@@ -38,14 +38,17 @@ the thread:
 - **LoomKit** (this repo) — the lifecycle glue: `plan.json`,
   `phase.json`, `gate-code` orchestration. You'll always touch this
   one directly.
-- **pilotfish** — automates "call a model, run the test, retry" so you
-  don't do it by hand for every task. Optional — you can drive
-  `plan.json` tasks manually instead.
-- **seal-gate** — the actual quality check `gate-code` runs under the
-  hood. Can also be called standalone in CI, outside LoomKit entirely.
-- **hammerhead-debug** — what you (or an agent) reach for when a task's
-  test won't go green and guessing feels tempting. Standalone too — no
-  dependency on LoomKit to use it on its own.
+- **[pilotfish](https://github.com/rfcclub/pilotfish)** — automates
+  "call a model, run the test, retry" so you don't do it by hand for
+  every task. Optional — you can drive `plan.json` tasks manually
+  instead.
+- **[seal-gate](https://github.com/rfcclub/seal-gate)** — the actual
+  quality check `gate-code` runs under the hood. Can also be called
+  standalone in CI, outside LoomKit entirely.
+- **[hammerhead-debug](https://github.com/rfcclub/hammerhead-debug)** —
+  what you (or an agent) reach for when a task's test won't go green
+  and guessing feels tempting. Standalone too — no dependency on
+  LoomKit to use it on its own.
 
 **Try it in 30 seconds, no setup:**
 ```bash
@@ -138,6 +141,24 @@ intent → brainstorm → spec → design → plan → tdd → verify → archiv
 pnpm build    # TypeScript compile
 pnpm test     # Run 65+ tests
 ```
+
+## Credits
+
+LoomKit is one of four sibling tools built together as one pipeline —
+see [The Ecosystem](#the-ecosystem--four-tools-one-job-each) above for
+how they fit together, [HARNESS.md](./HARNESS.md) for the full manual.
+
+- **[pilotfish](https://github.com/rfcclub/pilotfish)** — role-based
+  task orchestrator that drives `plan.json` tasks through a model.
+- **[seal-gate](https://github.com/rfcclub/seal-gate)** — the
+  deterministic + optional-LLM quality gate `gate-code` runs.
+- **[hammerhead-debug](https://github.com/rfcclub/hammerhead-debug)** —
+  hypothesis-gated debugging, no fix without a confirmed observation.
+- **[debug-skill](https://github.com/rfcclub/debug-skill)** — the real
+  DAP CLI `hammerhead-debug`'s `dap` probe kind shells out to. A fork
+  of [AlmogBaku/debug-skill](https://github.com/AlmogBaku/debug-skill)
+  (MIT) — full credit to the original for the daemon-backed
+  multi-backend DAP CLI this fork builds on.
 
 ## License
 
