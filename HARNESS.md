@@ -21,10 +21,20 @@ than a LoomKit-specific implementation detail:
 
 | Package | Role | Repo | Status |
 |---|---|---|---|
-| **orca — LoomKit** (this repo) | Lifecycle, plan tasks, gate orchestration | `~/work/loomkit` | real, published (`@gotako/loomkit`) |
-| **seal — seal-gate** | Verification: does the diff actually match the claim? | `~/work/seal-gate` | real, published (`seal-gate`) |
-| **hammerhead — hammerhead-debug** | Hypothesis-gated debugging (DAP or log evidence) when a task gets stuck | `~/work/hammerhead-debug` | real, local (not yet published) |
-| **pilotfish** | Drives a model through `plan.json` tasks by role, retries on failure, escalates to hammerhead-debug instead of guessing | `~/work/pilotfish` | real, local (not yet published) |
+| **orca — LoomKit** (this repo) | Lifecycle, plan tasks, gate orchestration | `~/work/loomkit` — [github.com/rfcclub/loomkit](https://github.com/rfcclub/loomkit) | real, published (`@gotako/loomkit`) |
+| **seal — seal-gate** | Verification: does the diff actually match the claim? | `~/work/seal-gate` — [github.com/rfcclub/seal-gate](https://github.com/rfcclub/seal-gate) | real, published (`seal-gate`) |
+| **hammerhead — hammerhead-debug** | Hypothesis-gated debugging (DAP or log evidence) when a task gets stuck | `~/work/hammerhead-debug` — [github.com/rfcclub/hammerhead-debug](https://github.com/rfcclub/hammerhead-debug) | real, on GitHub (not yet published to npm) |
+| **pilotfish** | Drives a model through `plan.json` tasks by role, retries on failure, escalates to hammerhead-debug instead of guessing | `~/work/pilotfish` — [github.com/rfcclub/pilotfish](https://github.com/rfcclub/pilotfish) | real, on GitHub (not yet published to npm) |
+
+A fifth repo backs `hammerhead-debug`'s `dap` probe kind: a fork of
+[AlmogBaku/debug-skill](https://github.com/AlmogBaku/debug-skill) at
+[github.com/rfcclub/debug-skill](https://github.com/rfcclub/debug-skill)
+(`~/work/debug-skill`), extended with three experimental backends
+(C#/.NET, ELF/ARM/assembly, Java) behind `DAP_EXPERIMENTAL_BACKENDS=1` —
+see that repo's README for real, verified usage of each. Not one of the
+"four pillars" (hammerhead-debug is the pillar; debug-skill is what its
+`dap` probe kind shells out to), but worth knowing about if a debug
+session needs a language beyond the original five.
 
 None of the four know about each other's internals — each consumes the
 others strictly as a dependency or a subprocess CLI, the same way any
@@ -53,10 +63,11 @@ external consumer would:
     └───────────────┘         └──────────┬─────────────┘
                                           │ subprocess
                                           ▼
-                                ┌───────────────────┐
-                                │ ~/repo/debug-skill  │  real DAP CLI
-                                │ (dap binary)         │  (external, Go)
-                                └───────────────────┘
+                                ┌───────────────────────┐
+                                │ ~/work/debug-skill      │  real DAP CLI
+                                │ (dap binary — fork of   │  (external, Go)
+                                │  AlmogBaku/debug-skill) │
+                                └───────────────────────┘
 ```
 
 ## Install From Source (all four)
@@ -68,11 +79,15 @@ npm resolution for `hammerhead-debug` or `pilotfish` yet.
 
 ```bash
 mkdir -p ~/work && cd ~/work
-git clone <loomkit-repo-url> loomkit
-git clone <seal-gate-repo-url> seal-gate
-git clone <hammerhead-debug-repo-url> hammerhead-debug
-git clone <pilotfish-repo-url> pilotfish
-# (or: if you already have them, just make sure all four live directly
+git clone git@github.com:rfcclub/loomkit.git
+git clone git@github.com:rfcclub/seal-gate.git
+git clone git@github.com:rfcclub/hammerhead-debug.git
+git clone git@github.com:rfcclub/pilotfish.git
+# optional fifth: only needed for hammerhead-debug's `dap` probe kind
+# beyond the original five languages (see "Experimental Debug Backends"
+# below)
+git clone git@github.com:rfcclub/debug-skill.git
+# (or: if you already have them, just make sure they live directly
 #  under the same parent — ~/work/loomkit, ~/work/seal-gate, etc.)
 ```
 
@@ -286,6 +301,78 @@ loomkit verify my-feature
 loomkit archive my-feature
 ```
 
+## Seal Gate — What `gate-code` Actually Calls
+
+`loomkit gate-code` (step 5 above) is a thin wrapper around seal-gate's
+own `Seal.review()` — worth knowing the real shape underneath if you
+need to call it directly (a CI step, a non-LoomKit workflow, or
+debugging why a gate produced the verdict it did).
+
+```ts
+import { Seal } from 'seal-gate'
+import { TrustMemory } from 'seal-gate/trust-memory'
+
+// One-time setup — persists reliability scoring across calls/sessions
+const agentMemory = new TrustMemory()
+Seal.withTrustMemory(agentMemory)
+
+const verdict = await Seal.review({
+  artifact_type: 'code_diff',              // llm_response | code_diff | test_plan | design | migration
+  spec: '- Auth must validate JWT\n- Return 401 on invalid token',
+  output: agentOutput,
+  evidence: {
+    test_log: 'PASS: 12 tests, 0 failed',
+    build_log: '',
+    diff: '',
+    references: [
+      { type: 'command', command: 'bun test', exit_code: 0, output: 'all pass' },
+    ],
+  },
+  context: { agent_id: 'aria', agent_role: 'aria' },
+})
+
+verdict.verdict              // PASS | PASS_WITH_WARNINGS | REVISE | ESCALATE_TO_HUMAN | BLOCK
+verdict.trust_score          // 0–100
+verdict.next_action          // human-readable instruction
+verdict.blocking_issues      // must-fix issues, if any
+```
+
+Real verdict thresholds (this is what `gate-code`'s printed verdict
+maps to):
+
+| Verdict | Trust Score | What LoomKit does |
+|---|---|---|
+| `PASS` | ≥ 85 | `gate-code` exits 0 — proceed to `verify` |
+| `PASS_WITH_WARNINGS` | 70–84 | exits 0, prints advisory notes (e.g. `SPEC_UNTESTED`) |
+| `REVISE` | 50–69 | exits non-zero — `blocking_issues` names what to fix |
+| `ESCALATE_TO_HUMAN` | 30–49 | exits non-zero — halt, a human must review |
+| `BLOCK` | < 30, or a hard rule (see below) | exits non-zero — do not proceed |
+
+A handful of hard rules `BLOCK`/`ESCALATE` regardless of trust score —
+the ones most likely to fire inside a LoomKit-driven change:
+
+| Rule | Trigger |
+|---|---|
+| `E001` | a claim like "tests pass" with no `test_log` evidence attached |
+| `AX501` | `DROP TABLE` / `rm -rf` without an adjacent explicit confirmation |
+| `AX503` | a migration with no rollback plan |
+| `TW205` | an auth-related change with no unauthorized-access test |
+
+Standalone CLI, outside LoomKit entirely (a plain CI step, for
+example):
+
+```bash
+cd ~/work/seal-gate
+bun run src/cli.ts review \
+  --output /path/to/agent-output.txt \
+  --spec /path/to/spec.md \
+  --artifact-type code_diff
+# exit 0 = PASS/PASS_WITH_WARNINGS, 1 = REVISE/ESCALATE/BLOCK, 2 = usage error
+```
+
+Full API (Python port, hooks for Qwen Code's `PostToolUse`/`Stop`
+events, the complete rule table) is in `~/work/seal-gate/USAGE.md`.
+
 ## Automated Task Execution — pilotfish
 
 Steps 2-4 above can be automated for `apply`-role tasks: pilotfish reads
@@ -377,7 +464,7 @@ this writing.** What's believed to work vs. what's flagged as unknown:
   have) or otherwise ensure `sh` resolves.
 - hammerhead-debug's **`dap` probe kind** (real breakpoints via the
   Debug Adapter Protocol) depends on an external Go binary
-  (`~/repo/debug-skill`'s `dap` CLI) — building that requires Go
+  (`~/work/debug-skill`'s `dap` CLI) — building that requires Go
   installed on Windows, and the underlying debugger backends
   (debugpy/dlv/js-debug/lldb-dap) each have their own Windows setup
   independent of this project. The **`instrumentation`/`isolated_test`/
