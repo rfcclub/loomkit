@@ -18,6 +18,65 @@ Intent-guided spec-driven design framework with TDD superpowers. For AI agents a
 > mutation-probing, and hypothesis-gated debugging via
 > `hammerhead-debug` — see **[HARNESS.md](./HARNESS.md)**.
 
+## The Ecosystem — Four Tools, One Job Each
+
+**LoomKit doesn't work alone once you're past the basic spec-driven
+flow above.** Three sibling tools plug in for the harder job — driving
+a weaker/cheaper model through small verified tasks without it losing
+the thread:
+
+```
+you write:  intent.md → plan.json (small tasks, each with a test)
+                              │
+                    ┌─────────┴─────────┐
+                    │     pilotfish       │  reads plan.json, calls a
+                    │                     │  model per task, retries on
+                    │                     │  a failing test, escalates
+                    │                     │  (never guesses) once retries
+                    │                     │  run out
+                    └─────────┬─────────┘
+                              │ every task's diff gets checked by
+                              ▼
+                    ┌─────────────────────┐
+                    │     seal-gate         │  "does this diff actually
+                    │                       │  match what it claims?" —
+                    │                       │  PASS / REVISE / BLOCK
+                    └─────────┬─────────────┘
+                              │ if a task is stuck and nobody
+                              │ knows why:
+                              ▼
+                    ┌─────────────────────────┐
+                    │   hammerhead-debug        │  no fix until a real
+                    │                           │  breakpoint/log line
+                    │                           │  CONFIRMS the cause —
+                    │                           │  never a guess
+                    └───────────────────────────┘
+```
+
+- **LoomKit** (this repo) — the lifecycle glue: `plan.json`,
+  `phase.json`, `gate-code` orchestration. You'll always touch this
+  one directly.
+- **pilotfish** — automates "call a model, run the test, retry" so you
+  don't do it by hand for every task. Optional — you can drive
+  `plan.json` tasks manually instead.
+- **seal-gate** — the actual quality check `gate-code` runs under the
+  hood. Can also be called standalone in CI, outside LoomKit entirely.
+- **hammerhead-debug** — what you (or an agent) reach for when a task's
+  test won't go green and guessing feels tempting. Standalone too — no
+  dependency on LoomKit to use it on its own.
+
+**Try it in 30 seconds, no setup:**
+```bash
+npm install @gotako/pilotfish@beta   # pulls all four automatically
+npx loomkit --help
+npx hammerhead-debug --help
+npx pilotfish --help
+```
+
+Full walkthrough (real commands, real output, step by step) is in
+**[HARNESS.md](./HARNESS.md)** — this section is the map, that
+document is the manual.
+
 ## Quick Start
 
 ```bash
