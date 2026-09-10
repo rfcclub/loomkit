@@ -18,54 +18,6 @@ Intent-guided spec-driven design framework with TDD superpowers. For AI agents a
 > mutation-probing, and hypothesis-gated debugging via
 > `hammerhead-debug` — see **[HARNESS.md](./HARNESS.md)**.
 
-## The Ecosystem — Four Tools, One Job Each
-
-**LoomKit doesn't work alone once you're past the basic spec-driven
-flow above.** Three sibling tools plug in for the harder job — driving
-a weaker/cheaper model through small verified tasks without it losing
-the thread:
-
-1. **You write** `intent.md` → `plan.json` (small tasks, each with a
-   test).
-2. **pilotfish** reads `plan.json`, calls a model per task, retries on
-   a failing test, escalates (never guesses) once retries run out.
-3. Every task's diff gets checked by **seal-gate**: "does this diff
-   actually match what it claims?" → `PASS` / `REVISE` / `BLOCK`.
-4. If a task is stuck and nobody knows why: **hammerhead-debug** — no
-   fix until a real breakpoint/log line CONFIRMS the cause, never a
-   guess.
-
-- **LoomKit** (this repo) — the lifecycle glue: `plan.json`,
-  `phase.json`, `gate-code` orchestration. You'll always touch this
-  one directly.
-- **[pilotfish](https://github.com/rfcclub/pilotfish)** — automates
-  "call a model, run the test, retry" so you don't do it by hand for
-  every task. Optional — you can drive `plan.json` tasks manually
-  instead.
-- **[seal-gate](https://github.com/rfcclub/seal-gate)** — the actual
-  quality check `gate-code` runs under the hood. Can also be called
-  standalone in CI, outside LoomKit entirely.
-- **[hammerhead-debug](https://github.com/rfcclub/hammerhead-debug)** —
-  what you (or an agent) reach for when a task's test won't go green
-  and guessing feels tempting. Standalone too — no dependency on
-  LoomKit to use it on its own.
-
-**Stability**: LoomKit and seal-gate are stable releases. pilotfish and
-hammerhead-debug are still on the `beta` npm dist-tag — expect rough
-edges; see each repo's own README for specifics.
-
-**Try it in 30 seconds, no setup:**
-```bash
-npm install @gotako/pilotfish@beta   # pulls all four automatically
-npx loomkit --help
-npx hammerhead-debug --help
-npx pilotfish --help
-```
-
-Full walkthrough (real commands, real output, step by step) is in
-**[HARNESS.md](./HARNESS.md)** — this section is the map, that
-document is the manual.
-
 ## Quick Start
 
 ```bash
@@ -157,23 +109,31 @@ pnpm build    # TypeScript compile
 pnpm test     # Run 65+ tests
 ```
 
-## Credits
+## Ecosystem
 
-LoomKit is one of four sibling tools built together as one pipeline —
-see [The Ecosystem](#the-ecosystem--four-tools-one-job-each) above for
-how they fit together, [HARNESS.md](./HARNESS.md) for the full manual.
+Past the basic spec-driven flow above, three sibling tools plug in for
+driving a weaker/cheaper model through small verified tasks:
+**[pilotfish](https://github.com/rfcclub/pilotfish)** (calls a model
+per `plan.json` task, retries on a failing test, escalates rather than
+guessing), **[seal-gate](https://github.com/rfcclub/seal-gate)** (the
+quality gate `gate-code` runs under the hood — PASS/REVISE/BLOCK), and
+**[hammerhead-debug](https://github.com/rfcclub/hammerhead-debug)**
+(hypothesis-gated debugging — no fix without a confirmed observation).
+All three are usable standalone, outside LoomKit. Full walkthrough:
+**[HARNESS.md](./HARNESS.md)**.
 
-- **[pilotfish](https://github.com/rfcclub/pilotfish)** — role-based
-  task orchestrator that drives `plan.json` tasks through a model.
-- **[seal-gate](https://github.com/rfcclub/seal-gate)** — the
-  deterministic + optional-LLM quality gate `gate-code` runs.
-- **[hammerhead-debug](https://github.com/rfcclub/hammerhead-debug)** —
-  hypothesis-gated debugging, no fix without a confirmed observation.
-- **[debug-skill](https://github.com/rfcclub/debug-skill)** — the real
-  DAP CLI `hammerhead-debug`'s `dap` probe kind shells out to. A fork
-  of [AlmogBaku/debug-skill](https://github.com/AlmogBaku/debug-skill)
-  (MIT) — full credit to the original for the daemon-backed
-  multi-backend DAP CLI this fork builds on.
+**Stability**: LoomKit and seal-gate are stable releases; pilotfish and
+hammerhead-debug are still on the `beta` npm dist-tag.
+
+```bash
+npm install @gotako/pilotfish@beta   # pulls all four automatically
+```
+
+`hammerhead-debug`'s `dap` probe kind shells out to
+[debug-skill](https://github.com/rfcclub/debug-skill), a fork of
+[AlmogBaku/debug-skill](https://github.com/AlmogBaku/debug-skill)
+(MIT) — full credit to the original for the daemon-backed
+multi-backend DAP CLI this fork builds on.
 
 ## License
 
