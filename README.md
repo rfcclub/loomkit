@@ -105,6 +105,13 @@ intent → brainstorm → spec → design → plan → tdd → verify → archiv
 | `loomkit status` | Show all changes + coverage |
 | `loomkit show [name]` | Show change details (all if no name) |
 | `loomkit adapt <tool>` | Show adapter setup |
+| `loomkit self-check <name>` | Scaffold self-check.md (claims, evidence, limitations) |
+| `loomkit gate-code <name>` | Run SEAL gate on current diff |
+| `loomkit craft <name>` | Show craft review verdict (maintainability) |
+| `loomkit gate-pipeline` | Aggregate all change verdicts → SHIP/HOLD/ESCALATE |
+| `loomkit learn <name>` | Extract lessons from gate history |
+| `loomkit plan-json <action> <name>` | Weak-model task list (init/add/start/complete/finish/show) |
+| `loomkit publish [--dry-run]` | Publish current version to npm |
 
 ## Skills
 
@@ -124,10 +131,14 @@ intent → brainstorm → spec → design → plan → tdd → verify → archiv
 | Finishing Branch | `skills/finishing-branch/SKILL.md` | Merge/PR/cleanup options |
 | Parallel Agents | `skills/parallel-agents/SKILL.md` | Dispatch independent tasks in parallel |
 | Writing Skills | `skills/writing-skills/SKILL.md` | Create and review LoomKit skills |
+| Systematic Debugging | `skills/systematic-debugging/SKILL.md` | Root-cause any bug/test failure before proposing a fix |
+| Requesting Code Review | `skills/requesting-code-review/SKILL.md` | Dispatch a reviewer subagent before merging |
+| Receiving Code Review | `skills/receiving-code-review/SKILL.md` | Verify feedback before implementing it |
+| Using Git Worktrees | `skills/using-git-worktrees/SKILL.md` | Isolated workspace for feature work |
 
 ## Users
 
-- **AI agents** → follow SKILL.md workflow (14 phases)
+- **AI agents** → follow SKILL.md workflow (18 skills)
 - **Humans** → read markdown specs, review plans, git approve
 
 ## Adapters
