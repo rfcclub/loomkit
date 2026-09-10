@@ -112,9 +112,15 @@ intent.md  proposal.md  spec.md design  tasks   code   verify   archive/
 
 ## Using the CLI
 
+**Workspace directory naming:** LoomKit scaffolds `loomkit/` by default
+for a fresh project. If a directory named `openspec/` already exists in
+the project root, LoomKit uses that instead (this repo's own `loomkit/`
+change history now lives in `openspec/`, for example). Every
+`loomkit/...` path below reads as `<loomkit/ or openspec/>/...`.
+
 ### loomkit init
 
-Creates the `loomkit/` structure in a project:
+Creates the workspace structure (`loomkit/` by default) in a project:
 
 ```bash
 cd my-project
@@ -572,5 +578,4 @@ rm -rf loomkit/changes/<name>
 
 ---
 
-*LoomKit — translated from the v1.1.0 Vietnamese guide (2026-06-02); current package version is 1.6.1*
 *Intent → Spec → TDD → Trust*
