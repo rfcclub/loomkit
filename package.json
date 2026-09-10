@@ -27,7 +27,7 @@
     "access": "public"
   },
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "@gotako/hammerhead-debug": "0.5.0-beta.0",
     "seal-gate": "0.5.0",
