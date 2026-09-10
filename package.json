@@ -1,12 +1,17 @@
 {
   "name": "@gotako/loomkit",
-  "version": "1.6.0-beta.1",
+  "version": "1.6.0",
   "description": "Intent-guided spec-driven design framework with TDD superpowers — Intent → Spec → TDD → Trust",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
     "loomkit": "dist/cli/index.js"
   },
+  "files": [
+    "dist",
+    "schemas",
+    "adapters"
+  ],
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
