@@ -112,11 +112,15 @@ intent.md  proposal.md  spec.md design  tasks   code   verify   archive/
 
 ## Using the CLI
 
-**Workspace directory naming:** LoomKit scaffolds `loomkit/` by default
-for a fresh project. If a directory named `openspec/` already exists in
-the project root, LoomKit uses that instead (this repo's own `loomkit/`
-change history now lives in `openspec/`, for example). Every
-`loomkit/...` path below reads as `<loomkit/ or openspec/>/...`.
+**Workspace directory naming:** every command resolves its workspace
+dir the same way (`getLoomKitDir()` in `src/cli/utils.ts`): if a
+directory named `openspec/` already exists in the project root, it's
+used — this is intentional, for compatibility with the OpenSpec CLI's
+own convention. Otherwise LoomKit falls back to `loomkit/`, which is
+what `loomkit init` scaffolds on a brand-new project. This repo's own
+workspace lives in `openspec/` (its old `loomkit/` was retired). Every
+`loomkit/...` path below reads as `<loomkit/ or openspec/>/...`
+depending on which one exists in your project.
 
 ### loomkit init
 
