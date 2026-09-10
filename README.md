@@ -50,6 +50,10 @@ the thread:
   and guessing feels tempting. Standalone too — no dependency on
   LoomKit to use it on its own.
 
+**Stability**: LoomKit and seal-gate are stable releases. pilotfish and
+hammerhead-debug are still on the `beta` npm dist-tag — expect rough
+edges; see each repo's own README for specifics.
+
 **Try it in 30 seconds, no setup:**
 ```bash
 npm install @gotako/pilotfish@beta   # pulls all four automatically
