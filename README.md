@@ -2,21 +2,16 @@
 
 Intent-guided spec-driven design framework with TDD superpowers. For AI agents and humans.
 
-> ⚠️ **`@beta` npm tag = the harness pipeline install.** `npm install
-> @gotako/loomkit` (default tag) gets the stable spec-driven workflow
-> only. `npm install @gotako/loomkit@beta` additionally pulls in real
-> `@gotako/hammerhead-debug@beta` and `seal-gate@beta` dependency
-> versions — the full four-package harness pipeline (see
-> [HARNESS.md](./HARNESS.md)) — without needing all repos cloned side
-> by side. **The `@beta` chain expects crashes, missing pieces, and
-> breaking changes without notice.** Not production-ready. Only use it
-> if you know what you're doing.
-
+> **Two install tags.** `npm install @gotako/loomkit` (default) is the
+> stable spec-driven workflow below. `@beta` pulls in beta dependency
+> versions for the wider harness pipeline instead — expect crashes and
+> breaking changes without notice on that tag.
+>
 > **Two workflows.** This README covers the spec-driven flow below
 > (Intent → Spec → Design → Plan → TDD → Verify → Archive). For the
-> weak-model / hash-chained task pipeline — `plan.json`, `gate-code`,
-> mutation-probing, and hypothesis-gated debugging via
-> `hammerhead-debug` — see **[HARNESS.md](./HARNESS.md)**.
+> weak-model / hash-chained task pipeline (`plan.json`, `gate-code`,
+> mutation-probing, hypothesis-gated debugging), see
+> **[HARNESS.md](./HARNESS.md)**.
 
 ## Quick Start
 
@@ -111,29 +106,15 @@ pnpm test     # Run 65+ tests
 
 ## Ecosystem
 
-Past the basic spec-driven flow above, three sibling tools plug in for
-driving a weaker/cheaper model through small verified tasks:
-**[pilotfish](https://github.com/rfcclub/pilotfish)** (calls a model
-per `plan.json` task, retries on a failing test, escalates rather than
-guessing), **[seal-gate](https://github.com/rfcclub/seal-gate)** (the
-quality gate `gate-code` runs under the hood — PASS/REVISE/BLOCK), and
-**[hammerhead-debug](https://github.com/rfcclub/hammerhead-debug)**
-(hypothesis-gated debugging — no fix without a confirmed observation).
-All three are usable standalone, outside LoomKit. Full walkthrough:
-**[HARNESS.md](./HARNESS.md)**.
+LoomKit is part of a larger harness pipeline — see
+**[HARNESS.md](./HARNESS.md)** for how it fits with pilotfish,
+seal-gate, and hammerhead-debug.
 
-**Stability**: LoomKit and seal-gate are stable releases; pilotfish and
-hammerhead-debug are still on the `beta` npm dist-tag.
-
-```bash
-npm install @gotako/pilotfish@beta   # pulls all four automatically
-```
+## Credits
 
 `hammerhead-debug`'s `dap` probe kind shells out to
-[debug-skill](https://github.com/rfcclub/debug-skill), a fork of
-[AlmogBaku/debug-skill](https://github.com/AlmogBaku/debug-skill)
-(MIT) — full credit to the original for the daemon-backed
-multi-backend DAP CLI this fork builds on.
+[debug-skill](https://github.com/rfcclub/debug-skill) (a fork of
+[AlmogBaku/debug-skill](https://github.com/AlmogBaku/debug-skill), MIT).
 
 ## License
 
