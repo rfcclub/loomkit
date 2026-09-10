@@ -1,7 +1,17 @@
 node_modules/
 dist/
+*.tgz
+*.tsbuildinfo
+docs_untracks/
 
-# LoomKit harness derived artifacts — regenerable, keep out of git
-openspec/changes/**/.harness/gate-verdicts/
-openspec/changes/**/.harness/lessons.md
-openspec/changes/**/.harness/gate-policy.diff.yml
+# Local AI-tool caches/configs — machine-specific, never publish or commit
+.pnpm-store/
+.catalyst-code/
+.qwen/
+.reasonix/
+.serena/
+.seal-gate-patch/
+
+# LoomKit dogfooding workflow state + generated graph — not published
+openspec/
+graphify-out/
