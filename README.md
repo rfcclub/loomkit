@@ -2,6 +2,37 @@
 
 Intent-guided spec-driven design framework with TDD superpowers. For AI agents and humans.
 
+## Why LoomKit?
+
+AI agents building software fail the same ways, repeatedly:
+
+- They read a vague request, silently pick a solution, and build that
+  instead of the actual requirement — the user's *proposed fix* gets
+  treated as *the spec*.
+- Tests get written after the code, or skipped — nothing proves the
+  result does what it claims.
+- "Done" is whatever the agent says it is. No independent check runs
+  before a human sees the diff.
+- Work spanning multiple sessions or agents loses its trail: why a
+  decision was made, what was explicitly out of scope, what's still
+  unverified.
+
+LoomKit is a set of gates that catch these before they ship:
+
+- **Intent Gate** — separates the real problem from the proposed
+  solution, captures non-goals and ambiguities, *before* a spec exists.
+- **Spec as WHEN/THEN scenarios** with SHALL/MUST/SHOULD keywords — a
+  requirement either has a scenario mapped to a real test, or it
+  doesn't ship.
+- **TDD Iron Law** — no production code without a failing test first,
+  enforced by the workflow, not a reminder in a doc.
+- **`loomkit verify`** — mechanically checks every SHALL/MUST scenario
+  has a passing test and writes `.loomkit-verify.json`, instead of
+  trusting the agent's word.
+- **Everything is markdown + JSON, git-tracked** — a human reviews the
+  actual spec/plan/verify report and approves via a normal git merge,
+  not a chat summary.
+
 > **Two install tags.** `npm install @gotako/loomkit` (default) is the
 > stable spec-driven workflow below. `@beta` pulls in beta dependency
 > versions for the wider harness pipeline instead — expect crashes and
