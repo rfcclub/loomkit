@@ -2,12 +2,9 @@
 
 Intent-guided spec-driven design framework with TDD superpowers. Built for AI agents and humans working together.
 
-> **Note:** this guide documents the v1.1.0-era CLI surface (`init`,
-> `intent`, `spec`, `design`, `plan`, `show`, `verify`, `archive`,
-> `status`, `adapt`). Newer commands (`craft`, `gate-code`,
-> `gate-pipeline`, `learn`, `plan-json`, `publish`, `self-check`) and
-> newer skills aren't covered yet — see [HARNESS.md](./HARNESS.md) for
-> the harness/debug-pipeline side of the toolkit.
+> Current as of v1.6.1. For the harness/debug-pipeline side (install
+> across all four packages, seal-gate/pilotfish/hammerhead-debug
+> integration, full walkthrough), see [HARNESS.md](./HARNESS.md).
 
 ---
 
@@ -230,6 +227,68 @@ loomkit adapt claude-code
 loomkit adapt codex
 ```
 
+### loomkit self-check <name>
+
+Scaffolds `self-check.md` — declare claims, evidence, known limitations, and unresolved assumptions before the code gate runs:
+
+```bash
+loomkit self-check user-auth
+```
+
+### loomkit gate-code <name>
+
+Runs the SEAL gate on the current diff — deterministic + optional LLM review, produces a trust score and a PASS/REVISE/BLOCK-style verdict:
+
+```bash
+loomkit gate-code user-auth [--skip-state-check] [--llm [provider]]
+```
+
+### loomkit craft <name>
+
+Shows the craft review verdict (maintainability) for a change — if none exists yet, prints the prompt to generate one:
+
+```bash
+loomkit craft user-auth
+```
+
+### loomkit gate-pipeline
+
+Aggregates every change's gate verdicts into one SHIP/HOLD/ESCALATE pipeline decision:
+
+```bash
+loomkit gate-pipeline
+```
+
+### loomkit learn <name>
+
+Extracts lessons from a change's gate history (what tripped the gate, how it was resolved):
+
+```bash
+loomkit learn user-auth
+```
+
+### loomkit plan-json <action> <name> [options]
+
+Weak-model task list, nested inside `phase.json`'s apply phase — the mechanical alternative to hand-writing `tasks.md` for models that need small, hash-chained, individually gated tasks:
+
+```bash
+loomkit plan-json init user-auth --trace INTENT-ID --resolved-by <name>
+loomkit plan-json add user-auth --id TASK-1 --behavior "..." --acceptance "..." --files a.ts,b.ts --test tests/a.test.ts [--consumes ...]
+loomkit plan-json start user-auth TASK-1 [--skip-state-check]
+loomkit plan-json complete user-auth TASK-1 --test-cmd "npx vitest run tests/a.test.ts" [--debug-session ... --debug-cycle ... --root-cause ...] [--escalated]
+loomkit plan-json finish user-auth   # closes the "apply" phase once every task is complete
+loomkit plan-json show user-auth     # no options
+```
+
+### loomkit publish [--dry-run]
+
+Publishes the current package version to npm — `--dry-run` packs and reports size without actually publishing:
+
+```bash
+loomkit publish --dry-run
+loomkit publish
+```
+
 ---
 
 ## Detailed Agent Workflow
@@ -333,7 +392,7 @@ THEN <expected outcome>
 
 ## Skills Reference
 
-LoomKit ships skills — each one corresponds to a phase or a cross-cutting concern (see the note at the top of this file; the list below reflects the v1.1.0-era set):
+LoomKit ships 18 skills — each one corresponds to a phase or a cross-cutting concern:
 
 | Phase | Skill Directory | Trigger |
 |-------|----------------|---------|
@@ -351,6 +410,10 @@ LoomKit ships skills — each one corresponds to a phase or a cross-cutting conc
 | Finishing Branch | `skills/finishing-branch/SKILL.md` | Merge/PR/cleanup |
 | Parallel Agents | `skills/parallel-agents/SKILL.md` | Dispatch independent tasks |
 | Writing Skills | `skills/writing-skills/SKILL.md` | Create new LoomKit skills |
+| Systematic Debugging | `skills/systematic-debugging/SKILL.md` | Any bug/test failure/unexpected behavior — find root cause before proposing a fix |
+| Requesting Code Review | `skills/requesting-code-review/SKILL.md` | Completing tasks or major features — dispatches a reviewer subagent |
+| Receiving Code Review | `skills/receiving-code-review/SKILL.md` | Before implementing review feedback — requires verification, not just agreement |
+| Using Git Worktrees | `skills/using-git-worktrees/SKILL.md` | Starting feature work that needs isolation from the current workspace |
 
 ---
 
