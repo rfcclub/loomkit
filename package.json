@@ -1,6 +1,6 @@
 {
   "name": "@gotako/loomkit",
-  "version": "1.6.2-beta.0",
+  "version": "1.6.3",
   "description": "Intent-guided spec-driven design framework with TDD superpowers — Intent → Spec → TDD → Trust",
   "type": "module",
   "main": "dist/index.js",
@@ -29,8 +29,8 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@gotako/hammerhead-debug": "0.5.0-beta.0",
-    "seal-gate": "0.5.0",
+    "@gotako/hammerhead-debug": "0.5.0-beta.5",
+    "seal-gate": "0.6.0-beta.2",
     "yaml": "^2.8.3",
     "zod": "^4.3.6"
   },

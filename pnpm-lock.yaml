@@ -9,11 +9,11 @@ importers:
   .:
     dependencies:
       '@gotako/hammerhead-debug':
-        specifier: 0.5.0-beta.0
-        version: 0.5.0-beta.0
+        specifier: 0.5.0-beta.5
+        version: 0.5.0-beta.5
       seal-gate:
-        specifier: 0.5.0
-        version: 0.5.0
+        specifier: 0.6.0-beta.2
+        version: 0.6.0-beta.2
       yaml:
         specifier: ^2.8.3
         version: 2.9.0
@@ -33,8 +33,9 @@ importers:
 
 packages:
 
-  '@gotako/hammerhead-debug@0.5.0-beta.0':
-    resolution: {integrity: sha512-YtiEINpuv3sxfWaMvTk/dQg0q+sJstWuceiDqXkzG26F3rp2gvpMz0OvB/huotaOz572xqn2aEqR71jxHqUM4w==}
+  '@gotako/hammerhead-debug@0.5.0-beta.5':
+    resolution: {integrity: sha512-1Pvy0dFROPX+AGLwpw7N2WhhH8aT0i/dpfr6lBFOCQfHsOJFFyr7scRbbZifMUuZqwPY/ywSfB+iS1nSfNQG/Q==}
+    engines: {node: '>=22'}
     hasBin: true
 
   '@jridgewell/sourcemap-codec@1.5.5':
@@ -324,8 +325,8 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
 
-  seal-gate@0.5.0:
-    resolution: {integrity: sha512-ELszpUMQ5xCkUvEvxmp+IKfQCf3NcPZNkQdFDG4Sb2Z9f9Rh7RAA2UF9rG9McUXgvvpBfdKIc499f5LPOVHkCA==}
+  seal-gate@0.6.0-beta.2:
+    resolution: {integrity: sha512-QqE9cD/YE8ThZuQuj8zcgzcTw1Zdju69+fUhZEHMvqK+N63x/xfZoibrU6+T38+8u72FogCi2psFSnnKRRTKAw==}
     engines: {node: '>=22.5.0'}
     hasBin: true
 
@@ -464,7 +465,7 @@ packages:
 
 snapshots:
 
-  '@gotako/hammerhead-debug@0.5.0-beta.0': {}
+  '@gotako/hammerhead-debug@0.5.0-beta.5': {}
 
   '@jridgewell/sourcemap-codec@1.5.5': {}
 
@@ -682,7 +683,7 @@ snapshots:
       '@rolldown/binding-win32-arm64-msvc': 1.2.3
       '@rolldown/binding-win32-x64-msvc': 1.2.3
 
-  seal-gate@0.5.0: {}
+  seal-gate@0.6.0-beta.2: {}
 
   siginfo@2.0.0: {}
 

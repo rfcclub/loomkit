@@ -1,3 +1,5 @@
+> **loomkit has been renamed to [@gotako/orca](https://www.npmjs.com/package/@gotako/orca).** `@gotako/orca` bundles the four-tool pipeline (orca, pilotfish, seal-gate, hammerhead-debug) in one install: `npm install @gotako/orca`. This package stays at 1.6.3 as a compatibility release.
+
 # LoomKit
 
 Intent-guided spec-driven design framework with TDD superpowers. For AI agents and humans.
