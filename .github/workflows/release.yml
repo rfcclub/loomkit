@@ -11,6 +11,9 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      # The publish and release steps only run when an npm token is configured; without one they are skipped, not failed.
+      HAS_NPM_TOKEN: ${{ secrets.NPM_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -65,13 +68,13 @@ jobs:
       # every push to master and failed every single run as a result
       # (10/10 failed before this fix, confirmed via `gh run list`).
       - name: Publish to npm
-        if: steps.check.outputs.exists == 'false'
+        if: steps.check.outputs.exists == 'false' && env.HAS_NPM_TOKEN == 'true'
         run: npm publish --tag ${{ steps.vars.outputs.npm_tag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Tag and create GitHub Release
-        if: steps.check.outputs.exists == 'false'
+        if: steps.check.outputs.exists == 'false' && env.HAS_NPM_TOKEN == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
